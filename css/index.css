@@ -1,25 +1,25 @@
-/* 台灣股市專用淺色雅虎風格設計系統 */
+/* 黃金聖鬥士(星矢)配天龍座(紫龍)翡翠深色設計系統 */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+TC:wght@300;400;500;700&display=swap');
 
 :root {
-  --primary-color: #8c7ae6;      /* 普羅旺斯薰衣草紫 */
-  --primary-hover: #7158e2;      /* 深薰衣草紫 */
-  --bg-color: #fcfaf7;           /* 暖乳白色背景 */
-  --card-bg: #ffffff;            /* 純白卡片 */
-  --text-main: #2f3640;          /* 深炭灰 */
-  --text-sub: #7f8c8d;           /* 砂礫灰 */
-  --border-color: #ebdcd3;       /* 溫暖沙色邊框 */
-  --hover-bg: #f8f5f0;           /* 滑過暖背景 */
+  --primary-color: #f39c12;      /* 黃金聖衣天馬金 */
+  --primary-hover: #f1c40f;      /* 流星拳琥珀金 */
+  --bg-color: #05140d;           /* 廬山大瀑布深淵墨綠 */
+  --card-bg: #0c2319;            /* 翡翠綠天龍盾卡片 */
+  --text-main: #e0e6e3;          /* 聖衣象牙白 */
+  --text-sub: #8fa59b;           /* 天龍青綠灰 */
+  --border-color: #1a422e;       /* 青銅聖衣邊框 */
+  --hover-bg: #143626;           /* 瀑布潭滑過綠 */
   
   /* 台灣股市習慣：紅漲綠跌 */
-  --stock-up-color: #d90429;     /* 鮮明正紅 */
-  --stock-down-color: #00875a;   /* 質感深綠 */
-  --stock-flat-color: #2f3640;   /* 平盤 */
+  --stock-up-color: #ff3838;     /* 鳳凰翼之火紅 */
+  --stock-down-color: #00ff88;   /* 廬山昇龍霸螢光翠綠 */
+  --stock-flat-color: #8fa59b;   /* 平盤 */
 
   --font-family: 'Inter', 'Noto Sans TC', sans-serif;
-  --shadow-sm: 0 2px 4px rgba(0,0,0,0.03);
-  --shadow-md: 0 4px 12px rgba(0,0,0,0.05);
-  --shadow-lg: 0 10px 25px rgba(0,0,0,0.08);
+  --shadow-sm: 0 2px 4px rgba(0,0,0,0.15);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.25);
+  --shadow-lg: 0 10px 25px rgba(0,0,0,0.35);
   --border-radius: 8px;
 }
 
@@ -38,7 +38,7 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* 頂部導覽列 Provence Style */
+/* 頂部導覽列 Saint Seiya Style */
 .app-header {
   max-width: 1200px;
   margin: 0 auto 16px auto;
@@ -62,6 +62,7 @@ body {
   font-size: 24px;
   font-weight: 800;
   color: var(--primary-color);
+  text-shadow: 0 0 8px rgba(243, 156, 18, 0.4);
 }
 
 .logo-text {
@@ -88,7 +89,8 @@ body {
   border: 1px solid var(--border-color);
   border-radius: 20px;
   font-size: 14px;
-  background: #f1f3f5;
+  background: rgba(0, 0, 0, 0.2);
+  color: var(--text-main);
   transition: all 0.3s ease;
   font-family: var(--font-family);
 }
@@ -96,7 +98,7 @@ body {
 .search-input-wrapper input:focus {
   background: var(--card-bg);
   border-color: var(--primary-color);
-  box-shadow: 0 0 0 3px rgba(140, 122, 230, 0.15);
+  box-shadow: 0 0 0 3px rgba(243, 156, 18, 0.25);
   outline: none;
 }
 
@@ -600,11 +602,11 @@ body {
 }
 
 .stock-row-summary:hover {
-  background: #f8f9fa;
+  background: var(--hover-bg);
 }
 
 .stock-row.is-expanded {
-  background: #fdfdfd;
+  background: var(--card-bg);
 }
 
 /* 欄位微調 */
@@ -619,7 +621,7 @@ body {
 .stock-name {
   font-weight: 700;
   font-size: 15px;
-  color: #0066cc; /* 股票名稱改為亮藍色 */
+  color: var(--primary-color); /* 股票名稱改為星矢黃金色 */
 }
 
 .stock-symbol {
@@ -649,7 +651,7 @@ body {
 .delete-stock-btn {
   background: transparent;
   border: none;
-  color: #adb5bd;
+  color: var(--text-sub);
   font-size: 16px;
   cursor: pointer;
   padding: 4px;
@@ -665,7 +667,7 @@ body {
 }
 
 .delete-stock-btn:hover {
-  background: #ffe3e3;
+  background: rgba(255, 56, 56, 0.15);
   color: var(--stock-up-color);
 }
 
@@ -685,7 +687,7 @@ body {
 /* 交易明細展開區塊 */
 .stock-details {
   border-top: 1px dashed var(--border-color);
-  background: #f8f9fa;
+  background: var(--bg-color); /* 改為深墨綠底色 */
   padding: 20px 24px 24px 56px;
 }
 
@@ -694,7 +696,7 @@ body {
   border-radius: var(--border-radius);
   border: 1px solid var(--border-color);
   padding: 16px 20px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.02);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
 }
 
 .details-header {
@@ -713,12 +715,12 @@ body {
 .add-tx-btn {
   padding: 6px 14px;
   background: var(--primary-color);
-  color: white;
+  color: #05140d; /* 按鈕文字使用深墨綠以高對比顯示 */
   border: none;
   border-radius: 4px;
   cursor: pointer;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
   transition: background 0.2s;
 }
 
@@ -743,7 +745,7 @@ body {
 
 .tx-table td {
   padding: 10px 8px;
-  border-bottom: 1px solid #f1f3f5;
+  border-bottom: 1px solid var(--border-color);
   vertical-align: middle;
 }
 
@@ -764,7 +766,7 @@ body {
 .delete-tx-btn {
   background: transparent;
   border: none;
-  color: #adb5bd;
+  color: var(--text-sub);
   cursor: pointer;
   font-size: 12px;
   padding: 4px 8px;
@@ -773,7 +775,7 @@ body {
 }
 
 .delete-tx-btn:hover {
-  background: #ffe3e3;
+  background: rgba(255, 56, 56, 0.15);
   color: var(--stock-up-color);
   text-decoration: underline;
 }
@@ -813,7 +815,7 @@ body {
   max-width: 480px;
   overflow: hidden;
   animation: modalFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-  border: 1px solid rgba(0,0,0,0.1);
+  border: 1px solid var(--border-color);
 }
 
 @keyframes modalFadeIn {
@@ -827,7 +829,7 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: #f8f9fa;
+  background: var(--hover-bg);
 }
 
 .modal-header h2 {
@@ -870,6 +872,8 @@ body {
   border: 1px solid var(--border-color);
   border-radius: 4px;
   font-size: 14px;
+  background: rgba(0, 0, 0, 0.3);
+  color: var(--text-main);
   font-family: var(--font-family);
   transition: border-color 0.2s;
 }
@@ -886,7 +890,7 @@ body {
 }
 
 .estimated-value-box {
-  background: #f8f9fa;
+  background: var(--hover-bg);
   border: 1px solid var(--border-color);
   padding: 12px;
   border-radius: 4px;
@@ -903,18 +907,18 @@ body {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
-  background: #f8f9fa;
+  background: var(--hover-bg);
 }
 
 .btn-primary {
   padding: 10px 20px;
   background: var(--primary-color);
-  color: white;
+  color: #05140d; /* 使用深色文字以獲得高對比 */
   border: none;
   border-radius: 4px;
   cursor: pointer;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 700;
   transition: background 0.2s;
 }
 
