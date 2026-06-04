@@ -1,0 +1,24 @@
+{
+  "name": "台股投資追蹤 PWA",
+  "short_name": "台股追蹤",
+  "description": "追蹤台股持倉與交易紀錄的 PWA 工具，支援 Google Sheets 與 Cloudflare 同步",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "./icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

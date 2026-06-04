@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>台股投資追蹤 PWA</title>
+  
+  <!-- PWA 設定 -->
+  <link rel="manifest" href="./manifest.json">
+  <meta name="theme-color" content="#ffffff">
+  <link rel="apple-touch-icon" href="./icons/icon-192.png">
+  
+  <!-- 樣式表 -->
+  <link rel="stylesheet" href="./css/index.css">
+</head>
+<body>
+
+  <!-- 頂部導覽列 -->
+  <header class="app-header">
+    <div class="logo-section">
+      <span class="logo-text" style="font-weight: 800; font-size: 22px; color: var(--primary-color);">我的自選股</span>
+    </div>
+    
+    <!-- 搜尋列 -->
+    <div class="search-container">
+      <div class="search-input-wrapper">
+        <input type="text" id="search-input" placeholder="搜尋股名/股號 (例如: 2330, 台積電)..." autocomplete="off">
+        <button class="search-icon-btn" aria-label="搜尋">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        </button>
+      </div>
+      <!-- 搜尋結果懸浮面板 -->
+      <div id="search-results" class="search-results-panel"></div>
+    </div>
+
+    <!-- 右側控制 -->
+    <div class="header-actions">
+      <button id="btn-settings" class="btn-secondary">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+        設定與雲端同步
+      </button>
+    </div>
+  </header>
+
+  <!-- 主內容區 -->
+  <main class="main-container">
+    
+    <!-- 群組 Tabs 區 -->
+    <div class="group-tabs-container">
+      <div id="group-tabs" class="tabs-wrapper">
+        <!-- 由 app.js 動態渲染 -->
+      </div>
+      <div class="group-management-btns">
+        <button id="btn-sort-groups" class="btn-link">排序群組</button>
+        <span class="btn-separator">|</span>
+        <button id="btn-add-group" class="btn-link">新增群組</button>
+      </div>
+    </div>
+
+    <!-- 子分頁選單與動作列 -->
+    <div class="sub-tabs-bar">
+      <div class="sub-tabs-left">
+        <button id="sub-tab-market" class="sub-tab">大盤行情</button>
+        <button id="sub-tab-summary" class="sub-tab active">摘要資料</button>
+        <button id="sub-tab-holdings" class="sub-tab">持股明細</button>
+        <button class="sub-tab btn-link-vip" disabled>✏️ 自訂欄位 <span class="badge-vip">VIP</span></button>
+      </div>
+    </div>
+    
+    <!-- 動作鏈結列 -->
+    <div class="action-links-bar">
+      <div class="action-links-left">
+        <button id="link-add-stock" class="action-link-btn">新增股票</button>
+        <span class="action-link-separator">|</span>
+        <button id="link-sort-stocks" class="action-link-btn">排序股票</button>
+        <span class="action-link-separator">|</span>
+        <button id="link-batch-delete-stocks" class="action-link-btn btn-link-danger">批量刪除個股</button>
+        <span id="batch-stocks-toolbar" style="display: none; align-items: center; gap: 8px; margin-left: 8px;">
+          <span id="batch-stocks-count" style="font-size: 13px; font-weight: 700; color: var(--text-main);">已選 0 檔</span>
+          <button id="btn-confirm-delete-stocks" class="btn-primary" style="background: var(--stock-up-color); padding: 2px 10px; font-size: 12px; border-radius: 4px; border: none; color: #fff; cursor: pointer;">確認刪除</button>
+          <button id="btn-cancel-delete-stocks" class="btn-secondary" style="padding: 2px 10px; font-size: 12px; border-radius: 4px;">取消</button>
+        </span>
+        <span class="action-link-separator" id="batch-stocks-sep">|</span>
+        <div id="broad-market-badge" style="display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; background: #f1f3f5; padding: 3px 10px; border-radius: 12px; margin-left: 4px;">
+          <span style="color: var(--text-sub); font-weight: 500;">大盤:</span>
+          <span id="bm-badge-val" class="stock-down">45,677.46</span>
+          <span id="bm-badge-change" class="stock-down">▼ 781.70 (1.68%)</span>
+        </div>
+        <span class="action-link-separator" id="bm-badge-sep">|</span>
+        <button id="link-rename-group" class="action-link-btn" style="display: none;">編輯此群組</button>
+        <span id="sep-rename-delete" class="action-link-separator" style="display: none;">|</span>
+        <button id="link-delete-group" class="action-link-btn btn-link-danger" style="display: none;">刪除此群組</button>
+      </div>
+      <div class="action-links-right">
+        <button class="btn-pill-vip" disabled>📅 自選股行事曆 <span class="badge-vip">VIP</span></button>
+        <button id="btn-health-check" class="btn-pill">投資健檢</button>
+      </div>
+    </div>
+
+    <!-- 資產總覽看板 -->
+    <div class="summary-board">
+      <div class="summary-left">
+        <span class="summary-label">持有股票市值</span>
+        <span id="summary-valuation" class="summary-value valuation">$0 <span style="font-size:16px; font-weight:600; color:var(--text-sub);">TWD</span></span>
+      </div>
+      <div class="summary-divider"></div>
+      <div class="summary-middle">
+        <div class="summary-pnl-row">
+          <div class="summary-pnl-item">
+            <span class="summary-pnl-label">當日變動</span>
+            <span id="summary-today-change" class="summary-value stock-flat">-</span>
+          </div>
+          <div class="summary-pnl-item">
+            <span class="summary-pnl-label">已實現損益</span>
+            <span id="summary-realized" class="summary-value stock-flat">-</span>
+          </div>
+          <div class="summary-pnl-item">
+            <span class="summary-pnl-label">未實現損益</span>
+            <span id="summary-unrealized" class="summary-value stock-flat">-</span>
+          </div>
+        </div>
+      </div>
+      <div class="summary-right">
+        <span id="summary-update-time" class="update-time-text">剛剛更新</span>
+        <button id="btn-toggle-view" class="action-link-btn" style="color: var(--primary-color); font-weight: 700; padding: 0;">前往明細 →</button>
+      </div>
+    </div>
+
+    <!-- 大盤行情容器 (預設隱藏) -->
+    <div id="market-container" class="market-section-card" style="display: none;">
+      <div class="market-header">
+        <h2 class="market-title">大盤行情</h2>
+        <div class="market-tabs">
+          <span class="market-tab active">台股</span>
+        </div>
+      </div>
+      
+      <div class="market-grid">
+        <!-- 左側指數卡片列表 -->
+        <div class="market-left-cards">
+          <div class="index-card active" id="idx-tse">
+            <div class="index-card-row">
+              <span class="index-card-name">上市</span>
+              <div class="index-card-val-group">
+                <span class="index-card-val stock-down">45,677.46</span>
+                <span class="index-card-change stock-down">▼ 781.70</span>
+              </div>
+            </div>
+            <div class="index-card-vol">12415.28 億</div>
+          </div>
+          
+          <div class="index-card" id="idx-otc">
+            <div class="index-card-row">
+              <span class="index-card-name">上櫃</span>
+              <div class="index-card-val-group">
+                <span class="index-card-val stock-down">440.10</span>
+                <span class="index-card-change stock-down">▼ 6.72</span>
+              </div>
+            </div>
+            <div class="index-card-vol">2781.06 億</div>
+          </div>
+
+          <div class="index-card" id="idx-elec">
+            <div class="index-card-row">
+              <span class="index-card-name">電子</span>
+              <div class="index-card-val-group">
+                <span class="index-card-val stock-down">2,962.57</span>
+                <span class="index-card-change stock-down">▼ 64.68</span>
+              </div>
+            </div>
+            <div class="index-card-vol">9036.36 億</div>
+          </div>
+
+          <div class="index-card" id="idx-fin">
+            <div class="index-card-row">
+              <span class="index-card-name">金融</span>
+              <div class="index-card-val-group">
+                <span class="index-card-val stock-up">2,907.52</span>
+                <span class="index-card-change stock-up">▲ 25.87</span>
+              </div>
+            </div>
+            <div class="index-card-vol">637.6 億</div>
+          </div>
+        </div>
+
+        <!-- 右側詳細圖表與大字數據 -->
+        <div class="market-main-chart">
+          <div class="market-detail-header">
+            <div class="market-large-data">
+              <span class="market-large-val stock-down" id="market-big-val">45,677.46</span>
+              <div class="market-large-change-group">
+                <span class="market-large-change stock-down" id="market-big-change">▼ 781.70 (1.68%)</span>
+                <span class="market-large-vol" id="market-big-vol">成交 12415.28 億</span>
+              </div>
+            </div>
+            
+            <div class="market-detail-table">
+              <div class="market-dt-item">
+                <span class="market-dt-label">開盤</span>
+                <span class="market-dt-val" id="market-open-val">46,364.07</span>
+              </div>
+              <div class="market-dt-item">
+                <span class="market-dt-label">最高</span>
+                <span class="market-dt-val" id="market-high-val">46,364.07</span>
+              </div>
+              <div class="market-dt-item">
+                <span class="market-dt-label">最低</span>
+                <span class="market-dt-val" id="market-low-val">45,677.46</span>
+              </div>
+              <div class="market-dt-item">
+                <span class="market-dt-label">昨收</span>
+                <span class="market-dt-val" id="market-prev-val">46,459.16</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 走勢圖 Canvas 模擬 -->
+          <div class="chart-canvas-container">
+            <canvas id="market-trend-canvas" width="600" height="280"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 股票列表容器 -->
+    <div id="portfolio-container" class="portfolio-table">
+      <!-- 由 portfolio.js 動態渲染 -->
+    </div>
+
+    <!-- 個股主要資料分頁 (預設隱藏) -->
+    <div id="stock-detail-view" class="stock-detail-section-card" style="display: none;">
+      <!-- 面板頂部資訊列 -->
+      <div class="detail-header-row">
+        <div class="detail-name-group">
+          <span id="detail-stock-name" class="detail-stock-name">-</span>
+          <span id="detail-stock-symbol" class="detail-stock-symbol">-</span>
+          <span class="badge-tag">ETF</span>
+          <span class="badge-rank">最多人瀏覽：第 18 名</span>
+          <span class="badge-rank">熱門搜尋：第 7 名</span>
+        </div>
+        <div class="detail-actions-group">
+          <button class="btn-detail-outline" disabled>⚡ 比較</button>
+          <button class="btn-detail-solid active">★ 已加自選股</button>
+          <button id="btn-close-detail" class="btn-detail-close">返回自選股 ✕</button>
+        </div>
+      </div>
+
+      <!-- 即時價格與統計數據 -->
+      <div class="detail-price-status-row">
+        <div class="detail-price-left">
+          <div class="detail-price-main-group">
+            <span id="detail-price-val" class="detail-price-val">-</span>
+            <span id="detail-price-change" class="detail-price-change">-</span>
+          </div>
+          <div id="detail-update-time" class="detail-update-time">收盤 | - 更新</div>
+        </div>
+        
+        <div class="detail-status-stats">
+          <div class="status-stat-item">
+            <span class="status-stat-val" id="detail-stat-vol">-</span>
+            <span class="status-stat-label">成交量</span>
+          </div>
+          <div class="status-stat-item">
+            <span class="status-stat-val">-</span>
+            <span class="status-stat-label">本益比 (同業平均)</span>
+          </div>
+          <div class="status-stat-item">
+            <span class="status-stat-val" id="detail-stat-streak">-</span>
+            <span class="status-stat-label">連漲連跌</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 個股功能分頁按鈕橫列 -->
+      <div class="detail-func-tabs">
+        <span class="detail-func-tab active">走勢圖</span>
+        <span class="detail-func-tab">技術分析</span>
+        <span class="detail-func-tab">成交彙整</span>
+        <span class="detail-func-tab">籌碼 <span class="dot-red"></span></span>
+        <span class="detail-func-tab">股利</span>
+        <span class="detail-func-tab">基本</span>
+        <span class="detail-func-tab">績效表現</span>
+        <span class="detail-func-tab">持股分析</span>
+        <span class="detail-func-tab">行事曆</span>
+        <span class="detail-func-tab">新聞 <span class="dot-blue"></span></span>
+        <span class="detail-func-tab">使用說明</span>
+      </div>
+
+      <!-- 圖表與五檔的 Grid -->
+      <div class="detail-chart-grid" id="detail-main-trend-grid">
+        <!-- 左側走勢圖 -->
+        <div class="detail-chart-box">
+          <div class="detail-chart-title" id="detail-chart-title">-即時行情</div>
+          <div class="detail-chart-subtitle" id="detail-chart-subtitle">上午09:01  價 -  量(張) -</div>
+          <div class="detail-trend-canvas-wrapper">
+            <canvas id="stock-trend-canvas" width="600" height="280"></canvas>
+          </div>
+          <div class="detail-chart-footer">註：成交金額不含盤後定價、零股、鉅額、拍賣及標購</div>
+        </div>
+
+        <!-- 右側詳細價格與五檔量能 -->
+        <div class="detail-stats-and-five">
+          <!-- 上方詳細即時表格 -->
+          <div class="detail-grid-table">
+            <div class="detail-grid-row">
+              <span class="dg-label">成交</span>
+              <span class="dg-val font-bold" id="dg-price">-</span>
+              <span class="dg-label">昨收</span>
+              <span class="dg-val" id="dg-prev">-</span>
+            </div>
+            <div class="detail-grid-row">
+              <span class="dg-label">開盤</span>
+              <span class="dg-val" id="dg-open">-</span>
+              <span class="dg-label">漲跌幅</span>
+              <span class="dg-val font-bold" id="dg-change-pct">-</span>
+            </div>
+            <div class="detail-grid-row">
+              <span class="dg-label">最高</span>
+              <span class="dg-val" id="dg-high">-</span>
+              <span class="dg-label">漲跌</span>
+              <span class="dg-val font-bold" id="dg-change">-</span>
+            </div>
+            <div class="detail-grid-row">
+              <span class="dg-label">最低</span>
+              <span class="dg-val" id="dg-low">-</span>
+              <span class="dg-label">總量</span>
+              <span class="dg-val" id="dg-volume">-</span>
+            </div>
+            <div class="detail-grid-row">
+              <span class="dg-label">均價</span>
+              <span class="dg-val" id="dg-avg">-</span>
+              <span class="dg-label">昨量</span>
+              <span class="dg-val" id="dg-prev-volume">-</span>
+            </div>
+            <div class="detail-grid-row">
+              <span class="dg-label">成交金額(億)</span>
+              <span class="dg-val" id="dg-amount">-</span>
+              <span class="dg-label">振幅</span>
+              <span class="dg-val" id="dg-amplitude">-</span>
+            </div>
+          </div>
+
+          <!-- 中間內外盤比重列 -->
+          <div class="market-in-out-bar-section">
+            <div class="market-in-out-text-row">
+              <span class="text-in">內盤 <span id="val-in-pct">56.66%</span></span>
+              <span class="text-out"><span id="val-out-pct">43.34%</span> 外盤</span>
+            </div>
+            <div class="market-in-out-bar">
+              <div class="bar-in" style="width: 56.66%;"></div>
+              <div class="bar-out" style="width: 43.34%;"></div>
+            </div>
+          </div>
+
+          <!-- 下方委買委賣五檔 -->
+          <table class="five-best-table">
+            <thead>
+              <tr>
+                <th style="width: 25%;">量</th>
+                <th style="width: 25%;">委買價</th>
+                <th style="width: 25%;">委賣價</th>
+                <th style="width: 25%;">量</th>
+              </tr>
+            </thead>
+            <tbody id="five-best-body">
+              <!-- 由 JavaScript 動態填充 -->
+            </tbody>
+            <tfoot>
+              <tr>
+                <td id="five-total-bid-vol">-</td>
+                <td>小計</td>
+                <td>小計</td>
+                <td id="five-total-ask-vol">-</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+
+      <!-- 股利資料呈現區塊 (預設隱藏) -->
+      <div id="detail-dividend-box" class="detail-dividend-container" style="display: none;">
+        <!-- 歷年股利分配長條圖 -->
+        <div class="dividend-chart-section">
+          <h3 class="div-section-title">歷年股利分配</h3>
+          <div class="dividend-legend">
+            <span class="legend-item"><span class="legend-color cash"></span>現金股利</span>
+            <span class="legend-item"><span class="legend-color stock"></span>股票股利</span>
+          </div>
+          <!-- 股利柱狀圖 Canvas -->
+          <div class="dividend-canvas-wrapper">
+            <canvas id="dividend-bar-canvas" width="800" height="260"></canvas>
+          </div>
+        </div>
+
+        <!-- 歷年股利政策表格 -->
+        <div class="dividend-policy-section" style="margin-top: 24px;">
+          <h3 class="div-section-title">歷年股利政策 <span style="font-size: 14px; font-weight: normal; color: var(--text-sub);">ⓘ</span></h3>
+          
+          <div class="dividend-tabs" style="margin: 12px 0;">
+            <button class="sub-tab active" style="font-size: 12px; padding: 4px 12px;">股利發放期間</button>
+            <button class="sub-tab" style="font-size: 12px; padding: 4px 12px;" disabled>股利所屬期間</button>
+          </div>
+
+          <div id="dividend-summary-info" class="dividend-summary-info" style="font-size: 13px; font-weight: 500; margin-bottom: 12px; color: var(--text-main);">
+            已連 <strong id="div-streak-years" class="stock-up">21</strong> 年發放股利，合計 <strong id="div-total-cash" class="stock-up">55.96</strong> 元。近 <strong class="stock-up">5</strong> 年平均現金殖利率：<strong id="div-avg-yield" class="stock-up">3.64%</strong>
+          </div>
+
+          <table class="dividend-table" style="width: 100%; border-collapse: collapse; font-size: 13px;">
+            <thead>
+              <tr style="background: #f1f3f5; border-bottom: 2px solid var(--border-color);">
+                <th style="padding: 10px; text-align: left; font-weight: 600;">發放期間</th>
+                <th style="padding: 10px; text-align: right; font-weight: 600;">所屬期間</th>
+                <th style="padding: 10px; text-align: right; font-weight: 600;">現金股利</th>
+                <th style="padding: 10px; text-align: right; font-weight: 600;">股票股利</th>
+                <th style="padding: 10px; text-align: right; font-weight: 600;">現金殖利率</th>
+                <th style="padding: 10px; text-align: right; font-weight: 600;">除息日昨收價</th>
+                <th style="padding: 10px; text-align: center; font-weight: 600;">除息日</th>
+                <th style="padding: 10px; text-align: center; font-weight: 600;">除權日</th>
+                <th style="padding: 10px; text-align: center; font-weight: 600;">現金股利發放日</th>
+              </tr>
+            </thead>
+            <tbody id="dividend-table-body">
+              <!-- 由 JavaScript 動態填充 -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    </div>
+
+  </main>
+
+  <!-- 彈出視窗 1：新增交易明細 Modal -->
+  <div id="tx-modal" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 id="tx-modal-title">新增交易</h2>
+        <button id="tx-modal-close" class="modal-close-btn">&times;</button>
+      </div>
+      <form id="tx-form">
+        <div class="modal-body">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="tx-date">交易日期</label>
+              <input type="date" id="tx-date" class="form-control" required>
+            </div>
+            <div class="form-group">
+              <label for="tx-type">交易類別</label>
+              <select id="tx-type" class="form-control" required>
+                <option value="buy">買入</option>
+                <option value="sell">賣出</option>
+              </select>
+            </div>
+          </div>
+          
+          <div class="form-row" style="margin-top: 12px;">
+            <div class="form-group">
+              <label for="tx-shares">交易股數 (股)</label>
+              <input type="number" id="tx-shares" class="form-control" placeholder="1000" min="1" step="1" required>
+            </div>
+            <div class="form-group">
+              <label for="tx-price">交易單價 (TWD)</label>
+              <input type="number" id="tx-price" class="form-control" placeholder="105.5" min="0.01" step="0.01" required>
+            </div>
+          </div>
+
+          <div class="estimated-value-box">
+            <span>估算交易總值：</span>
+            <span>$ <span id="tx-total-value">0.00</span> TWD</span>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" id="tx-modal-cancel" class="btn-secondary">取消</button>
+          <button type="submit" class="btn-primary">確認新增</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 彈出視窗 2：雲端同步設定 Modal -->
+  <div id="settings-modal" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>設定與雲端備份同步</h2>
+        <button id="settings-close" class="modal-close-btn">&times;</button>
+      </div>
+      <form id="settings-form">
+        <div class="modal-body" style="max-height: 450px; overflow-y: auto;">
+          
+          <!-- Google Sheets 同步 -->
+          <div class="sync-section">
+            <h3>Google 試算表同步 (個人雲端)</h3>
+            <div class="form-group">
+              <label for="set-gsheet-url">Google Apps Script Web App 網址</label>
+              <input type="url" id="set-gsheet-url" class="form-control" placeholder="https://script.google.com/macros/s/.../exec">
+            </div>
+            <div class="sync-buttons">
+              <button type="button" id="sync-gsheet-up" class="btn-secondary">上傳至雲端</button>
+              <button type="button" id="sync-gsheet-down" class="btn-secondary">從雲端還原</button>
+            </div>
+          </div>
+
+          <!-- Cloudflare KV 同步 -->
+          <div class="sync-section">
+            <h3>Cloudflare KV 同步 (開發者備份)</h3>
+            <div class="form-group">
+              <label for="set-cf-url">Cloudflare Worker 網址</label>
+              <input type="url" id="set-cf-url" class="form-control" placeholder="https://your-worker.xxx.workers.dev">
+            </div>
+            <div class="sync-buttons">
+              <button type="button" id="sync-cf-up" class="btn-secondary">上傳至雲端</button>
+              <button type="button" id="sync-cf-down" class="btn-secondary">從雲端還原</button>
+            </div>
+          </div>
+
+          <div class="sync-status" style="margin-top: 16px; border-top: 1px solid var(--border-color); padding-top: 12px;">
+            上次同步時間：<span id="sync-status-time" style="font-weight: 600;">從未同步</span>
+          </div>
+
+        </div>
+        <div class="modal-footer">
+          <button type="button" id="settings-cancel" class="btn-secondary">取消</button>
+          <button type="submit" class="btn-primary">儲存設定</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 彈出視窗 3：快捷賣出對話框 Modal -->
+  <div id="quick-sell-modal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 400px;">
+      <div class="modal-header">
+        <h2 id="qs-modal-title">快速平倉賣出</h2>
+        <button id="quick-sell-close" class="modal-close-btn">&times;</button>
+      </div>
+      <form id="quick-sell-form">
+        <div class="modal-body">
+          <p style="font-size: 13px; color: var(--text-sub); margin-bottom: 12px;">將原本買入部位快速對應平倉。已自動帶入日期與股數：</p>
+          
+          <div class="form-group">
+            <label for="qs-date">交易日期</label>
+            <input type="date" id="qs-date" class="form-control" required>
+          </div>
+          
+          <div class="form-group" style="margin-top: 12px;">
+            <label for="qs-shares">交易股數 (股)</label>
+            <input type="number" id="qs-shares" class="form-control" min="1" step="1" required>
+          </div>
+          
+          <div class="form-group" style="margin-top: 12px;">
+            <label for="qs-price">賣出單價 (TWD)</label>
+            <input type="number" id="qs-price" class="form-control" placeholder="輸入賣出單價..." min="0.01" step="0.01" required>
+          </div>
+
+          <div class="estimated-value-box">
+            <span>估算賣出總值：</span>
+            <span>$ <span id="qs-total-value">0.00</span> TWD</span>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" id="quick-sell-cancel" class="btn-secondary">取消</button>
+          <button type="submit" class="btn-primary">確認賣出</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 主程式與各模組 (不使用 ES Modules 以支援本機 file 協議直接開啟) -->
+  <script src="./js/stock_data.js"></script>
+  <script src="./js/utils.js"></script>
+  <script src="./js/db.js"></script>
+  <script src="./js/api.js"></script>
+  <script src="./js/sync.js"></script>
+  <script src="./js/search.js"></script>
+  <script src="./js/transaction.js"></script>
+  <script src="./js/portfolio.js"></script>
+  <script src="./js/app.js"></script>
+</body>
+</html>
