@@ -2285,6 +2285,7 @@ body.force-mobile .summary-pnl-item .summary-value {
   /* 摘要資料分頁寬度與顯示設定 */
   .stock-table-header.view-summary {
     display: grid !important;
+    grid-template-columns: 40px 2fr 1fr 1fr 1.1fr 1fr 1fr 1fr 1fr 1fr 1fr 1.1fr 1.1fr 50px !important;
     min-width: 1200px !important;
   }
   .stock-row-summary.view-summary {
@@ -2303,6 +2304,7 @@ body.force-mobile .summary-pnl-item .summary-value {
   /* 持股明細分頁寬度與顯示設定 */
   .stock-table-header.view-holdings {
     display: grid !important;
+    grid-template-columns: 40px 2.2fr 1.5fr 1.2fr 1.5fr 1.5fr 1.5fr 1.8fr 1fr 50px !important;
     min-width: 950px !important;
   }
   .stock-row-summary.view-holdings {
@@ -2326,6 +2328,12 @@ body.force-mobile .summary-pnl-item .summary-value {
   }
   .stock-row-summary div[style*="text-align: right"] {
     text-align: right !important;
+  }
+
+  /* 覆蓋回來：非批次模式時 checkbox 欄位要隱藏 */
+  .stock-table-header:not(.batch-mode-active) .col-batch-check,
+  .stock-row-summary:not(.batch-mode-active) .col-batch-check {
+    display: none !important;
   }
 }
 
@@ -2377,6 +2385,7 @@ body.force-mobile .stock-row-summary.batch-mode-active .col-info {
 
 body.force-mobile .stock-table-header.view-summary {
   display: grid !important;
+  grid-template-columns: 40px 2fr 1fr 1fr 1.1fr 1fr 1fr 1fr 1fr 1fr 1fr 1.1fr 1.1fr 50px !important;
   min-width: 1200px !important;
 }
 body.force-mobile .stock-row-summary.view-summary {
@@ -2394,6 +2403,7 @@ body.force-mobile .stock-row-summary.view-summary.batch-mode-active {
 
 body.force-mobile .stock-table-header.view-holdings {
   display: grid !important;
+  grid-template-columns: 40px 2.2fr 1.5fr 1.2fr 1.5fr 1.5fr 1.5fr 1.8fr 1fr 50px !important;
   min-width: 950px !important;
 }
 body.force-mobile .stock-row-summary.view-holdings {
@@ -2416,6 +2426,12 @@ body.force-mobile .stock-row-summary > div {
 }
 body.force-mobile .stock-row-summary div[style*="text-align: right"] {
   text-align: right !important;
+}
+
+/* 覆蓋回來：非批次模式時 checkbox 欄位要隱藏 */
+body.force-mobile .stock-table-header:not(.batch-mode-active) .col-batch-check,
+body.force-mobile .stock-row-summary:not(.batch-mode-active) .col-batch-check {
+  display: none !important;
 }
 
 /* 4. 大盤行情：手機端排版改為「置頂大圖表」與「下方 3 欄橫排其餘卡片」（並隱藏啟用中項目） */
