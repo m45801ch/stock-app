@@ -2202,20 +2202,63 @@ body.force-mobile .summary-pnl-item .summary-value {
   letter-spacing: -0.5px;
 }
 
-/* 3. 摘要資料分頁：在手機/強制手機模式下，強制以完整表格形式呈現並支援水平滾動 */
+/* 3. 自選股表格：首欄固定 (Sticky) 水平滑動機制 */
 @media (max-width: 768px) {
   .portfolio-table {
     overflow-x: auto !important;
     -webkit-overflow-scrolling: touch;
     max-width: 100% !important;
     border-radius: var(--border-radius);
+    position: relative;
   }
-  
+
+  /* 凍結首部關鍵資料欄位 */
+  .col-expand,
+  .col-batch-check,
+  .col-info {
+    position: sticky !important;
+    z-index: 10 !important;
+    background: var(--card-bg) !important;
+  }
+
+  /* 表頭凍結背景色 */
+  .stock-table-header .col-expand,
+  .stock-table-header .col-batch-check,
+  .stock-table-header .col-info {
+    background: #f8f9fa !important;
+    color: var(--text-sub) !important;
+  }
+
+  /* 寬度位置偏移量計算 */
+  .col-expand {
+    left: 0 !important;
+  }
+
+  /* 無批次勾選時 */
+  .stock-table-header:not(.batch-mode-active) .col-info,
+  .stock-row-summary:not(.batch-mode-active) .col-info {
+    left: 40px !important;
+    box-shadow: 4px 0 8px -2px rgba(0, 0, 0, 0.4) !important;
+    border-right: 1px solid var(--border-color) !important;
+  }
+
+  /* 有批次勾選時 */
+  .stock-table-header.batch-mode-active .col-batch-check,
+  .stock-row-summary.batch-mode-active .col-batch-check {
+    left: 40px !important;
+  }
+  .stock-table-header.batch-mode-active .col-info,
+  .stock-row-summary.batch-mode-active .col-info {
+    left: 70px !important;
+    box-shadow: 4px 0 8px -2px rgba(0, 0, 0, 0.4) !important;
+    border-right: 1px solid var(--border-color) !important;
+  }
+
+  /* 摘要資料分頁寬度與顯示設定 */
   .stock-table-header.view-summary {
     display: grid !important;
     min-width: 1200px !important;
   }
-  
   .stock-row-summary.view-summary {
     display: grid !important;
     grid-template-columns: 40px 2fr 1fr 1fr 1.1fr 1fr 1fr 1fr 1fr 1fr 1fr 1.1fr 1.1fr 50px !important;
@@ -2224,38 +2267,93 @@ body.force-mobile .summary-pnl-item .summary-value {
     padding: 16px !important;
     min-width: 1200px !important;
   }
-  
   .stock-table-header.view-summary.batch-mode-active,
   .stock-row-summary.view-summary.batch-mode-active {
     grid-template-columns: 40px 30px 2fr 1fr 1fr 1.1fr 1fr 1fr 1fr 1fr 1fr 1fr 1.1fr 1.1fr 50px !important;
   }
-  
-  .stock-row-summary.view-summary .col-avg-cost,
-  .stock-row-summary.view-summary .col-market-val,
-  .stock-row-summary.view-summary .col-realized,
-  .stock-row-summary.view-summary .col-tx-count,
-  .stock-row-summary.view-summary .col-actions,
-  .stock-row-summary.view-summary div {
+
+  /* 持股明細分頁寬度與顯示設定 */
+  .stock-table-header.view-holdings {
+    display: grid !important;
+    min-width: 950px !important;
+  }
+  .stock-row-summary.view-holdings {
+    display: grid !important;
+    grid-template-columns: 40px 2.2fr 1.5fr 1.2fr 1.5fr 1.5fr 1.5fr 1.8fr 1fr 50px !important;
+    grid-template-areas: none !important;
+    gap: 0 !important;
+    padding: 16px !important;
+    min-width: 950px !important;
+  }
+  .stock-table-header.view-holdings.batch-mode-active,
+  .stock-row-summary.view-holdings.batch-mode-active {
+    grid-template-columns: 40px 30px 2.2fr 1.5fr 1.2fr 1.5fr 1.5fr 1.5fr 1.8fr 1fr 50px !important;
+  }
+
+  /* 強制還原隱藏的欄位，呈現完整表格 */
+  .stock-row-summary .col-avg-cost,
+  .stock-row-summary .col-market-val,
+  .stock-row-summary .col-realized,
+  .stock-row-summary .col-tx-count,
+  .stock-row-summary .col-actions,
+  .stock-row-summary div {
     display: block !important;
   }
-  
-  .stock-row-summary.view-summary div[style*="text-align: right"] {
+  .stock-row-summary div[style*="text-align: right"] {
     text-align: right !important;
   }
 }
 
+/* 強制手機版 (自選股首欄凍結滑動) */
 body.force-mobile .portfolio-table {
   overflow-x: auto !important;
   -webkit-overflow-scrolling: touch;
   max-width: 100% !important;
   border-radius: var(--border-radius);
+  position: relative;
+}
+
+body.force-mobile .col-expand,
+body.force-mobile .col-batch-check,
+body.force-mobile .col-info {
+  position: sticky !important;
+  z-index: 10 !important;
+  background: var(--card-bg) !important;
+}
+
+body.force-mobile .stock-table-header .col-expand,
+body.force-mobile .stock-table-header .col-batch-check,
+body.force-mobile .stock-table-header .col-info {
+  background: #f8f9fa !important;
+  color: var(--text-sub) !important;
+}
+
+body.force-mobile .col-expand {
+  left: 0 !important;
+}
+
+body.force-mobile .stock-table-header:not(.batch-mode-active) .col-info,
+body.force-mobile .stock-row-summary:not(.batch-mode-active) .col-info {
+  left: 40px !important;
+  box-shadow: 4px 0 8px -2px rgba(0, 0, 0, 0.4) !important;
+  border-right: 1px solid var(--border-color) !important;
+}
+
+body.force-mobile .stock-table-header.batch-mode-active .col-batch-check,
+body.force-mobile .stock-row-summary.batch-mode-active .col-batch-check {
+  left: 40px !important;
+}
+body.force-mobile .stock-table-header.batch-mode-active .col-info,
+body.force-mobile .stock-row-summary.batch-mode-active .col-info {
+  left: 70px !important;
+  box-shadow: 4px 0 8px -2px rgba(0, 0, 0, 0.4) !important;
+  border-right: 1px solid var(--border-color) !important;
 }
 
 body.force-mobile .stock-table-header.view-summary {
   display: grid !important;
   min-width: 1200px !important;
 }
-
 body.force-mobile .stock-row-summary.view-summary {
   display: grid !important;
   grid-template-columns: 40px 2fr 1fr 1fr 1.1fr 1fr 1fr 1fr 1fr 1fr 1fr 1.1fr 1.1fr 50px !important;
@@ -2264,40 +2362,114 @@ body.force-mobile .stock-row-summary.view-summary {
   padding: 16px !important;
   min-width: 1200px !important;
 }
-
 body.force-mobile .stock-table-header.view-summary.batch-mode-active,
 body.force-mobile .stock-row-summary.view-summary.batch-mode-active {
   grid-template-columns: 40px 30px 2fr 1fr 1fr 1.1fr 1fr 1fr 1fr 1fr 1fr 1fr 1.1fr 1.1fr 50px !important;
 }
 
-body.force-mobile .stock-row-summary.view-summary .col-avg-cost,
-body.force-mobile .stock-row-summary.view-summary .col-market-val,
-body.force-mobile .stock-row-summary.view-summary .col-realized,
-body.force-mobile .stock-row-summary.view-summary .col-tx-count,
-body.force-mobile .stock-row-summary.view-summary .col-actions,
-body.force-mobile .stock-row-summary.view-summary div {
-  display: block !important;
+body.force-mobile .stock-table-header.view-holdings {
+  display: grid !important;
+  min-width: 950px !important;
+}
+body.force-mobile .stock-row-summary.view-holdings {
+  display: grid !important;
+  grid-template-columns: 40px 2.2fr 1.5fr 1.2fr 1.5fr 1.5fr 1.5fr 1.8fr 1fr 50px !important;
+  grid-template-areas: none !important;
+  gap: 0 !important;
+  padding: 16px !important;
+  min-width: 950px !important;
+}
+body.force-mobile .stock-table-header.view-holdings.batch-mode-active,
+body.force-mobile .stock-row-summary.view-holdings.batch-mode-active {
+  grid-template-columns: 40px 30px 2.2fr 1.5fr 1.2fr 1.5fr 1.5fr 1.5fr 1.8fr 1fr 50px !important;
 }
 
-body.force-mobile .stock-row-summary.view-summary div[style*="text-align: right"] {
+body.force-mobile .stock-row-summary .col-avg-cost,
+body.force-mobile .stock-row-summary .col-market-val,
+body.force-mobile .stock-row-summary .col-realized,
+body.force-mobile .stock-row-summary .col-tx-count,
+body.force-mobile .stock-row-summary .col-actions,
+body.force-mobile .stock-row-summary div {
+  display: block !important;
+}
+body.force-mobile .stock-row-summary div[style*="text-align: right"] {
   text-align: right !important;
 }
 
-/* 4. 大盤行情：在手機/強制手機模式下，改為 2x2 指數卡片 + 疊加下方大圖表 */
+/* 4. 大盤行情：手機端排版改為「置頂大圖表」與「下方 3 欄橫排其餘卡片」（並隱藏啟用中項目） */
 @media (max-width: 768px) {
   .market-grid {
+    display: grid !important;
     grid-template-columns: 1fr !important;
+    grid-template-areas: 
+      "chart"
+      "cards" !important;
     gap: 16px !important;
   }
-  .market-left-cards {
-    display: grid !important;
-    grid-template-columns: 1fr 1fr !important;
-    gap: 8px !important;
-  }
   .market-main-chart {
+    grid-area: chart !important;
     width: 100% !important;
     max-width: 100% !important;
   }
+  
+  /* 在手機端隱藏當前啟用中的大盤卡片，其餘三個卡片橫向排列 */
+  .index-card.active {
+    display: none !important;
+  }
+  .market-left-cards {
+    grid-area: cards !important;
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 8px !important;
+  }
+
+  /* 大盤卡片改為垂直堆疊、置中排列 */
+  .index-card {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    text-align: center !important;
+    padding: 8px !important;
+    gap: 4px !important;
+    min-height: 100px !important;
+    justify-content: center !important;
+  }
+  .index-card-row {
+    flex-direction: column !important;
+    align-items: center !important;
+    margin-bottom: 0 !important;
+    width: 100% !important;
+  }
+  .index-card-val-group {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 2px !important;
+    width: 100% !important;
+  }
+  .index-card-name {
+    font-size: 13px !important;
+    font-weight: 700 !important;
+    margin-bottom: 2px !important;
+  }
+  .index-card-val {
+    font-size: 14px !important;
+    font-weight: 700 !important;
+  }
+  .index-card-change {
+    font-size: 10px !important;
+    font-weight: 500 !important;
+    white-space: nowrap !important;
+  }
+  .index-card-vol {
+    font-size: 10px !important;
+    text-align: center !important;
+    margin-top: 2px !important;
+    color: #55665c !important;
+    white-space: nowrap !important;
+  }
+
+  /* 走勢大圖表頂部資訊排版 */
   .market-detail-header {
     flex-direction: column !important;
     align-items: stretch !important;
@@ -2315,18 +2487,72 @@ body.force-mobile .stock-row-summary.view-summary div[style*="text-align: right"
   }
 }
 
+/* 強制手機版的大盤排版 */
 body.force-mobile .market-grid {
+  display: grid !important;
   grid-template-columns: 1fr !important;
+  grid-template-areas: 
+    "chart"
+    "cards" !important;
   gap: 16px !important;
 }
-body.force-mobile .market-left-cards {
-  display: grid !important;
-  grid-template-columns: 1fr 1fr !important;
-  gap: 8px !important;
-}
 body.force-mobile .market-main-chart {
+  grid-area: chart !important;
   width: 100% !important;
   max-width: 100% !important;
+}
+body.force-mobile .index-card.active {
+  display: none !important;
+}
+body.force-mobile .market-left-cards {
+  grid-area: cards !important;
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 8px !important;
+}
+body.force-mobile .index-card {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  text-align: center !important;
+  padding: 8px !important;
+  gap: 4px !important;
+  min-height: 100px !important;
+  justify-content: center !important;
+}
+body.force-mobile .index-card-row {
+  flex-direction: column !important;
+  align-items: center !important;
+  margin-bottom: 0 !important;
+  width: 100% !important;
+}
+body.force-mobile .index-card-val-group {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  gap: 2px !important;
+  width: 100% !important;
+}
+body.force-mobile .index-card-name {
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  margin-bottom: 2px !important;
+}
+body.force-mobile .index-card-val {
+  font-size: 14px !important;
+  font-weight: 700 !important;
+}
+body.force-mobile .index-card-change {
+  font-size: 10px !important;
+  font-weight: 500 !important;
+  white-space: nowrap !important;
+}
+body.force-mobile .index-card-vol {
+  font-size: 10px !important;
+  text-align: center !important;
+  margin-top: 2px !important;
+  color: #55665c !important;
+  white-space: nowrap !important;
 }
 body.force-mobile .market-detail-header {
   flex-direction: column !important;
@@ -2343,4 +2569,6 @@ body.force-mobile .market-detail-table {
 body.force-mobile .market-dt-item {
   align-items: center !important;
 }
+
+
 
