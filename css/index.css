@@ -1192,22 +1192,23 @@ select:disabled {
 }
 
 .index-card {
-  background: #f8f9fa;
-  border: 1px solid var(--border-color);
+  background: #f5ebd0;          /* 改為淡黃色 */
+  border: 1px solid #d0c498;
   border-radius: var(--border-radius);
   padding: 12px;
   cursor: pointer;
   transition: all 0.2s;
+  color: #000000;
 }
 
 .index-card:hover {
-  background: var(--hover-bg);
+  background: #e9dec4;
 }
 
 .index-card.active {
-  background: #ffffff;
+  background: #e9dec4;          /* 啟用時為淡金色/深米黃 */
   border-color: var(--primary-color);
-  box-shadow: 0 0 0 2px rgba(140, 122, 230, 0.15);
+  box-shadow: 0 0 0 2px rgba(243, 156, 18, 0.2);
 }
 
 .index-card-row {
@@ -1220,7 +1221,7 @@ select:disabled {
 .index-card-name {
   font-weight: 700;
   font-size: 14px;
-  color: var(--text-main);
+  color: #000000 !important;     /* 強制深黑色 */
 }
 
 .index-card-val-group {
@@ -1241,8 +1242,15 @@ select:disabled {
 
 .index-card-vol {
   font-size: 11px;
-  color: var(--text-sub);
+  color: #55665c !important;     /* 成交量改為深灰綠 */
   text-align: left;
+}
+
+/* 大盤區域（含左側卡片、右側走勢區與動作列大盤膠囊）的綠色文字改深以符合無障礙對比度 */
+.market-main-chart .stock-down,
+.index-card .stock-down,
+#broad-market-badge .stock-down {
+  color: #007a4b !important;
 }
 
 /* 右側走勢圖與大字數據 */
@@ -1792,6 +1800,17 @@ select:disabled {
   padding: 10px 16px;
   border-radius: 6px;
   border-left: 4px solid var(--primary-color);
+}
+
+/* 動作列大盤指數膠囊樣式修正 */
+#broad-market-badge {
+  background: #f5ebd0 !important;   /* 改為與大盤主題一致的淡黃色 */
+  border: 1px solid #d0c498 !important; /* 金沙色細邊框 */
+}
+
+#broad-market-badge span {
+  color: #000000 !important;       /* 大盤文字改為深黑色 */
+  font-weight: 700 !important;
 }
 
 

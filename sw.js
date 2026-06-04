@@ -1,4 +1,4 @@
-const CACHE_NAME = "tw-stock-tracker-v11";
+const CACHE_NAME = "tw-stock-tracker-v12";
 const ASSETS = [
   "./",
   "./index.html",
@@ -11,6 +11,7 @@ const ASSETS = [
   "./js/transaction.js",
   "./js/search.js",
   "./js/utils.js",
+  "./js/stock_data.js",
   "./manifest.json",
   "./icons/icon-192.png",
   "./icons/icon-512.png"
