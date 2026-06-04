@@ -236,13 +236,15 @@
             let deleteCellHTML = '';
             
             if (hasChild) {
-              // 在「買入(已賣出)」前面新增一個小三角形折疊按鈕，供點擊展開/收合子賣出列
               typeCellHTML = `
                 <div style="display:flex; align-items:center; gap:4px;">
                   <span class="toggle-child-btn" data-parent-id="${parentTx.id}" style="cursor:pointer; color:#0056b3; font-weight:700; margin-right:4px; user-select:none;">
                     ${isChildExpanded ? '▼' : '▶'}
                   </span>
-                  <span class="tx-status-sold" style="font-weight:700; color:var(--text-main);">買入<span style="color:#adb5bd; font-weight:normal; margin-left:2px;">(已賣出)</span></span>
+                  <select class="inline-edit-select inline-type" data-id="${parentTx.id}" data-date="${parentTx.date}" data-shares="${parentTx.shares}">
+                    <option value="buy" ${isBuy ? 'selected' : ''}>買入</option>
+                    <option value="sell" ${!isBuy ? 'selected' : ''}>賣出</option>
+                  </select>
                 </div>
               `;
               deleteCellHTML = `<button class="delete-tx-btn" data-id="${parentTx.id}">刪除</button>`;
