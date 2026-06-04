@@ -1,6 +1,6 @@
 (function(window) {
   const DB_NAME = 'TWStockTrackerDB';
-  const DB_VERSION = 2; // 升級版本以建立新 store
+  const DB_VERSION = 3; // 升級版本以建立新 store
 
   let dbInstance = null;
 
@@ -39,6 +39,13 @@
         if (!db.objectStoreNames.contains('stock_dictionary')) {
           const dictStore = db.createObjectStore('stock_dictionary', { keyPath: 'symbol' });
           dictStore.createIndex('code', 'code', { unique: false });
+        }
+
+        // 新增已刪除交易 Store (用於歷史紀錄)
+        if (!db.objectStoreNames.contains('deleted_transactions')) {
+          const deletedTxStore = db.createObjectStore('deleted_transactions', { keyPath: 'id', autoIncrement: true });
+          deletedTxStore.createIndex('symbol', 'symbol', { unique: false });
+          deletedTxStore.createIndex('groupId', 'groupId', { unique: false });
         }
       };
 
@@ -105,7 +112,7 @@
       if (id === 'default') return reject(new Error('不能刪除預設群組'));
       try {
         const db = await initDB();
-        const tx = db.transaction(['groups', 'stocks', 'transactions'], 'readwrite');
+        const tx = db.transaction(['groups', 'stocks', 'transactions', 'deleted_transactions'], 'readwrite');
         
         tx.objectStore('groups').delete(id);
 
@@ -121,11 +128,15 @@
         };
 
         const txStore = tx.objectStore('transactions');
+        const delStore = tx.objectStore('deleted_transactions');
         const txIndex = txStore.index('groupId');
         const txReq = txIndex.openCursor(IDBKeyRange.only(id));
         txReq.onsuccess = (e) => {
           const cursor = e.target.result;
           if (cursor) {
+            const txData = cursor.value;
+            txData.deletedAt = new Date().toISOString();
+            delStore.add(txData);
             cursor.delete();
             cursor.continue();
           }
@@ -165,7 +176,7 @@
     return new Promise(async (resolve, reject) => {
       try {
         const db = await initDB();
-        const tx = db.transaction(['stocks', 'transactions'], 'readwrite');
+        const tx = db.transaction(['stocks', 'transactions', 'deleted_transactions'], 'readwrite');
         
         const stockStore = tx.objectStore('stocks');
         const index = stockStore.index('group_symbol');
@@ -178,11 +189,15 @@
         };
 
         const txStore = tx.objectStore('transactions');
+        const delStore = tx.objectStore('deleted_transactions');
         const request = txStore.openCursor();
         request.onsuccess = (e) => {
           const cursor = e.target.result;
           if (cursor) {
             if (cursor.value.groupId === groupId && cursor.value.symbol === symbol) {
+              const txData = cursor.value;
+              txData.deletedAt = new Date().toISOString();
+              delStore.add(txData);
               cursor.delete();
             }
             cursor.continue();
@@ -200,9 +215,10 @@
       if (!symbols || symbols.length === 0) return resolve(true);
       try {
         const db = await initDB();
-        const tx = db.transaction(['stocks', 'transactions'], 'readwrite');
+        const tx = db.transaction(['stocks', 'transactions', 'deleted_transactions'], 'readwrite');
         const stockStore = tx.objectStore('stocks');
         const txStore = tx.objectStore('transactions');
+        const delStore = tx.objectStore('deleted_transactions');
         const symbolSet = new Set(symbols);
 
         // 1. 刪除 stocks 中符合 groupId 且 symbol 在 symbols 中的紀錄
@@ -218,12 +234,15 @@
           }
         };
 
-        // 2. 刪除 transactions 中符合 groupId 且 symbol 在 symbols 中的交易紀錄
+        // 2. 刪除 transactions 中符合 groupId 且 symbol 在 symbols 中的交易紀錄 (備份到 deleted_transactions)
         const txReq = txStore.openCursor();
         txReq.onsuccess = (e) => {
           const cursor = e.target.result;
           if (cursor) {
             if (cursor.value.groupId === groupId && symbolSet.has(cursor.value.symbol)) {
+              const txData = cursor.value;
+              txData.deletedAt = new Date().toISOString();
+              delStore.add(txData);
               cursor.delete();
             }
             cursor.continue();
@@ -284,18 +303,30 @@
     return new Promise(async (resolve, reject) => {
       try {
         const db = await initDB();
-        const tx = db.transaction('transactions', 'readwrite');
+        const tx = db.transaction(['transactions', 'deleted_transactions'], 'readwrite');
         const store = tx.objectStore('transactions');
+        const delStore = tx.objectStore('deleted_transactions');
         
-        // 1. 刪除本筆交易
-        store.delete(Number(id));
+        // 1. 先讀取資料，備份到 deleted_transactions
+        const getReq = store.get(Number(id));
+        getReq.onsuccess = () => {
+          const txData = getReq.result;
+          if (txData) {
+            txData.deletedAt = new Date().toISOString();
+            delStore.add(txData);
+          }
+          store.delete(Number(id));
+        };
 
-        // 2. 連同刪除以本筆交易為父交易 ID 的所有關聯子交易
+        // 2. 連同刪除以本筆交易為父交易 ID 的所有關聯子交易 (也要備份)
         const request = store.openCursor();
         request.onsuccess = (e) => {
           const cursor = e.target.result;
           if (cursor) {
             if (cursor.value.parentId === Number(id)) {
+              const childData = cursor.value;
+              childData.deletedAt = new Date().toISOString();
+              delStore.add(childData);
               cursor.delete();
             }
             cursor.continue();
@@ -318,19 +349,33 @@
       if (!ids || ids.length === 0) return resolve(true);
       try {
         const db = await initDB();
-        const tx = db.transaction('transactions', 'readwrite');
+        const tx = db.transaction(['transactions', 'deleted_transactions'], 'readwrite');
         const store = tx.objectStore('transactions');
+        const delStore = tx.objectStore('deleted_transactions');
         const idSet = new Set(ids.map(Number));
 
-        // 1. 刪除所有選取的父交易
-        idSet.forEach(id => store.delete(id));
+        // 1. 備份並刪除所有選取的父交易
+        idSet.forEach(id => {
+          const getReq = store.get(id);
+          getReq.onsuccess = () => {
+            const data = getReq.result;
+            if (data) {
+              data.deletedAt = new Date().toISOString();
+              delStore.add(data);
+            }
+            store.delete(id);
+          };
+        });
 
-        // 2. 掃一次 cursor，刪除所有 parentId 在 idSet 中的子交易
+        // 2. 掃一次 cursor，備份並刪除所有 parentId 在 idSet 中的子交易
         const req = store.openCursor();
         req.onsuccess = (e) => {
           const cursor = e.target.result;
           if (cursor) {
             if (cursor.value.parentId && idSet.has(cursor.value.parentId)) {
+              const childData = cursor.value;
+              childData.deletedAt = new Date().toISOString();
+              delStore.add(childData);
               cursor.delete();
             }
             cursor.continue();
@@ -501,6 +546,82 @@
     });
   }
 
+  function getDeletedTransactions() {
+    return new Promise(async (resolve, reject) => {
+      try {
+        const store = await getStore('deleted_transactions');
+        const request = store.getAll();
+        request.onsuccess = () => {
+          const list = request.result || [];
+          list.sort((a, b) => new Date(b.deletedAt) - new Date(a.deletedAt));
+          resolve(list);
+        };
+        request.onerror = () => reject(request.error);
+      } catch (e) { reject(e); }
+    });
+  }
+
+  function restoreDeletedTransaction(id) {
+    return new Promise(async (resolve, reject) => {
+      try {
+        const db = await initDB();
+        const tx = db.transaction(['stocks', 'transactions', 'deleted_transactions'], 'readwrite');
+        const stockStore = tx.objectStore('stocks');
+        const txStore = tx.objectStore('transactions');
+        const delStore = tx.objectStore('deleted_transactions');
+
+        const getReq = delStore.get(Number(id));
+        getReq.onsuccess = () => {
+          const txData = getReq.result;
+          if (!txData) {
+            return reject(new Error('找不到該筆交易紀錄'));
+          }
+
+          const restoredTx = { ...txData };
+          const origId = restoredTx.id;
+          delete restoredTx.deletedAt;
+          
+          // 還原到主交易表
+          txStore.add(restoredTx);
+
+          // 確保所屬股票在對應自選股群組中
+          const groupId = restoredTx.groupId;
+          const symbol = restoredTx.symbol;
+          const stockIndex = stockStore.index('group_symbol');
+          const stockGetReq = stockIndex.get([groupId, symbol]);
+          stockGetReq.onsuccess = () => {
+            const existingStock = stockGetReq.result;
+            if (!existingStock) {
+              stockStore.add({
+                groupId,
+                symbol,
+                name: symbol,
+                addedAt: new Date().toISOString()
+              });
+            }
+          };
+
+          // 從刪除紀錄移除
+          delStore.delete(Number(id));
+        };
+
+        tx.oncomplete = () => resolve(true);
+        tx.onerror = () => reject(tx.error);
+      } catch (e) { reject(e); }
+    });
+  }
+
+  function clearAllDeletedTransactions() {
+    return new Promise(async (resolve, reject) => {
+      try {
+        const store = await getStore('deleted_transactions', 'readwrite');
+        const request = store.clear();
+        request.onsuccess = () => resolve(true);
+        request.onerror = () => reject(request.error);
+      } catch (e) { reject(e); }
+    });
+  }
+
   window.StockDB = {
     initDB,
     getAllGroups,
@@ -515,12 +636,15 @@
     addTransaction,
     deleteTransaction,
     batchDeleteTransactions,
-    updateTransaction, // 暴露更新 API
+    updateTransaction,
     saveStocksToDictionary,
     getStockFromDictionary,
     searchStocksLocally,
     getDictionaryCount,
     exportAllData,
-    importAllData
+    importAllData,
+    getDeletedTransactions,
+    restoreDeletedTransaction,
+    clearAllDeletedTransactions
   };
 })(window);

@@ -205,16 +205,18 @@
       await refreshGroups();
     });
 
-    // 2. 子分頁切換 (大盤行情 / 摘要資料 / 持股明細)
+    // 2. 子分頁切換 (大盤行情 / 摘要資料 / 持股明細 / 歷史紀錄)
     window.activeSubTab = 'summary'; // 預設為摘要資料
     
     const subTabMarket = document.getElementById('sub-tab-market');
     const subTabSummary = document.getElementById('sub-tab-summary');
     const subTabHoldings = document.getElementById('sub-tab-holdings');
+    const subTabHistory = document.getElementById('sub-tab-history');
     const btnToggleView = document.getElementById('btn-toggle-view');
 
     const marketContainer = document.getElementById('market-container');
     const portfolioContainer = document.getElementById('portfolio-container');
+    const historyContainer = document.getElementById('history-container');
 
     const switchSubTab = (tabName) => {
       window.activeSubTab = tabName;
@@ -223,15 +225,25 @@
       subTabMarket?.classList.toggle('active', tabName === 'market');
       subTabSummary?.classList.toggle('active', tabName === 'summary');
       subTabHoldings?.classList.toggle('active', tabName === 'holdings');
+      subTabHistory?.classList.toggle('active', tabName === 'history');
+
+      // 隱藏所有容器
+      if (marketContainer) marketContainer.style.display = 'none';
+      if (portfolioContainer) portfolioContainer.style.display = 'none';
+      if (historyContainer) historyContainer.style.display = 'none';
 
       if (tabName === 'market') {
-        marketContainer.style.display = 'block';
-        portfolioContainer.style.display = 'none';
+        if (marketContainer) marketContainer.style.display = 'block';
         if (btnToggleView) btnToggleView.textContent = '前往摘要 →';
         drawMarketTrendChart();
+      } else if (tabName === 'history') {
+        if (historyContainer) historyContainer.style.display = 'block';
+        if (btnToggleView) btnToggleView.textContent = '前往摘要 →';
+        if (window.StockPortfolio && typeof window.StockPortfolio.renderHistory === 'function') {
+          window.StockPortfolio.renderHistory();
+        }
       } else {
-        marketContainer.style.display = 'none';
-        portfolioContainer.style.display = 'block';
+        if (portfolioContainer) portfolioContainer.style.display = 'block';
         if (tabName === 'summary') {
           if (btnToggleView) btnToggleView.textContent = '前往明細 →';
         } else {
@@ -244,6 +256,17 @@
     subTabMarket?.addEventListener('click', () => switchSubTab('market'));
     subTabSummary?.addEventListener('click', () => switchSubTab('summary'));
     subTabHoldings?.addEventListener('click', () => switchSubTab('holdings'));
+    subTabHistory?.addEventListener('click', () => switchSubTab('history'));
+
+    // 永久清空所有歷史紀錄
+    document.getElementById('btn-clear-history')?.addEventListener('click', async () => {
+      if (confirm('確定要永久刪除所有歷史交易紀錄嗎？此操作無法還原！')) {
+        await window.StockDB.clearAllDeletedTransactions();
+        if (window.StockPortfolio && typeof window.StockPortfolio.renderHistory === 'function') {
+          window.StockPortfolio.renderHistory();
+        }
+      }
+    });
     
     btnToggleView?.addEventListener('click', () => {
       if (window.activeSubTab === 'market') {

@@ -405,7 +405,7 @@
                 <div class="batch-toolbar" style="display:none;align-items:center;gap:8px;">
                   <span class="batch-count-label" style="font-size:13px;color:var(--text-sub);">已選 0 筆</span>
                   <button class="batch-delete-btn" style="background:#dc3545;color:#fff;border:none;border-radius:6px;padding:4px 12px;font-size:13px;cursor:pointer;">🗑 刪除選取</button>
-                  <button class="batch-cancel-btn" style="background:var(--bg-card,#f1f3f5);color:var(--text-main);border:none;border-radius:6px;padding:4px 10px;font-size:13px;cursor:pointer;">取消</button>
+                  <button class="batch-cancel-btn btn-secondary" style="padding:4px 10px;font-size:13px;border-radius:6px;">取消</button>
                 </div>
                 <button class="add-tx-btn">新增交易</button>
               </div>
@@ -671,8 +671,97 @@
     }
   }
 
+  async function renderHistory() {
+    const tbody = document.getElementById('history-tbody');
+    if (!tbody) return;
+
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--text-sub);">讀取歷史紀錄中...</td></tr>';
+
+    try {
+      const [deletedTxs, groups] = await Promise.all([
+        window.StockDB.getDeletedTransactions(),
+        window.StockDB.getAllGroups()
+      ]);
+
+      if (deletedTxs.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text-sub);">目前無歷史刪除紀錄</td></tr>';
+        return;
+      }
+
+      // 建立群組名稱對照表
+      const groupMap = {};
+      groups.forEach(g => {
+        groupMap[g.id] = g.name;
+      });
+
+      // 取得所有唯一的 symbols，批次抓取中文名稱
+      const uniqueSymbols = [...new Set(deletedTxs.map(t => t.symbol))];
+      const dictMap = {};
+      await Promise.all(uniqueSymbols.map(async (sym) => {
+        const info = await window.StockDB.getStockFromDictionary(sym);
+        if (info && info.name) {
+          dictMap[sym] = info.name;
+        } else {
+          dictMap[sym] = sym;
+        }
+      }));
+
+      tbody.innerHTML = '';
+      deletedTxs.forEach(tx => {
+        const tr = document.createElement('tr');
+        const gName = groupMap[tx.groupId] || '未知群組';
+        const sName = dictMap[tx.symbol] || tx.symbol;
+        const typeText = tx.type === 'buy' ? '買入' : '賣出';
+        const typeClass = tx.type === 'buy' ? 'tx-buy' : 'tx-sell';
+        
+        // 格式化時間
+        const delDate = new Date(tx.deletedAt);
+        const formatDelTime = `${delDate.getFullYear()}/${String(delDate.getMonth() + 1).padStart(2, '0')}/${String(delDate.getDate()).padStart(2, '0')} ${String(delDate.getHours()).padStart(2, '0')}:${String(delDate.getMinutes()).padStart(2, '0')}`;
+
+        tr.innerHTML = `
+          <td style="padding: 10px 8px; color: var(--text-sub);">${gName}</td>
+          <td style="padding: 10px 8px;">
+            <div class="stock-name" style="font-size:14px;color:var(--primary-color);">${sName}</div>
+            <div class="stock-symbol" style="font-size:11px;">${tx.symbol}</div>
+          </td>
+          <td style="padding: 10px 8px; color: var(--text-main);">${tx.date}</td>
+          <td style="padding: 10px 8px;"><span class="${typeClass}" style="font-weight:700;">${typeText}</span></td>
+          <td style="padding: 10px 8px; color: var(--text-main);">${window.StockUtils.formatNumber(tx.shares, 0)} 股</td>
+          <td style="padding: 10px 8px; color: var(--text-main);">${window.StockUtils.formatNumber(tx.price, 2)} TWD</td>
+          <td style="padding: 10px 8px; color: var(--text-sub); font-size:12px;">${formatDelTime}</td>
+          <td style="padding: 10px 8px; text-align: center;">
+            <button class="btn-pill restore-history-btn" data-id="${tx.id}" style="padding: 2px 10px; font-size:12px; border-radius: 4px;">還原</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      // 綁定還原按鈕事件
+      tbody.querySelectorAll('.restore-history-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          const id = e.target.dataset.id;
+          try {
+            await window.StockDB.restoreDeletedTransaction(id);
+            alert('交易已成功還原！若該股原先不在自選股中，將會自動加回。');
+            await renderHistory();
+            if (window.refreshPortfolio) {
+              await window.refreshPortfolio();
+            }
+          } catch (err) {
+            alert('還原失敗: ' + err.message);
+          }
+        });
+      });
+
+    } catch (err) {
+      console.error(err);
+      tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:20px;color:#dc3545;">讀取失敗: ${err.message}</td></tr>`;
+    }
+  }
+
   window.StockPortfolio = {
     renderPortfolio,
-    toggleBatchMode
+    toggleBatchMode,
+    renderHistory
   };
 })(window);

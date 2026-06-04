@@ -63,6 +63,7 @@
         <button id="sub-tab-market" class="sub-tab">大盤行情</button>
         <button id="sub-tab-summary" class="sub-tab active">摘要資料</button>
         <button id="sub-tab-holdings" class="sub-tab">持股明細</button>
+        <button id="sub-tab-history" class="sub-tab">歷史紀錄</button>
         <button class="sub-tab btn-link-vip" disabled>✏️ 自訂欄位 <span class="badge-vip">VIP</span></button>
       </div>
     </div>
@@ -231,6 +232,33 @@
     <!-- 股票列表容器 -->
     <div id="portfolio-container" class="portfolio-table">
       <!-- 由 portfolio.js 動態渲染 -->
+    </div>
+
+    <!-- 歷史紀錄容器 (預設隱藏) -->
+    <div id="history-container" class="portfolio-table" style="display: none; padding: 20px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
+        <h2 style="font-size: 18px; font-weight: 700; color: var(--text-main);">已刪除之歷史交易紀錄</h2>
+        <button id="btn-clear-history" class="btn-secondary btn-link-danger" style="padding: 6px 12px; font-size: 13px; font-weight: 700; border-radius: 4px;">
+          🗑 永久清空所有歷史紀錄
+        </button>
+      </div>
+      <table class="tx-table" style="width: 100%; border-collapse: collapse;">
+        <thead>
+          <tr>
+            <th style="padding: 10px 8px;">所屬群組</th>
+            <th style="padding: 10px 8px;">股名/股號</th>
+            <th style="padding: 10px 8px;">交易日期</th>
+            <th style="padding: 10px 8px;">買入/賣出</th>
+            <th style="padding: 10px 8px;">交易股數</th>
+            <th style="padding: 10px 8px;">交易股價</th>
+            <th style="padding: 10px 8px;">刪除時間</th>
+            <th style="padding: 10px 8px; text-align: center;">操作</th>
+          </tr>
+        </thead>
+        <tbody id="history-tbody">
+          <!-- 由 portfolio.js 動態渲染 -->
+        </tbody>
+      </table>
     </div>
 
     <!-- 個股主要資料分頁 (預設隱藏) -->
