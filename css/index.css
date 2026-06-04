@@ -2159,26 +2159,40 @@ body.force-mobile .main-container {
   padding: 0 !important;
 }
 
-/* 2. 資產總覽看板 (PNL) 行動端縮放與防止擠壓 */
+/* 2. 資產總覽看板 (PNL) 行動端改為垂直分行顯示 (當日變動、已實現、未實現) */
 @media (max-width: 768px) {
   .summary-middle {
     margin: 12px 0 !important;
     width: 100% !important;
   }
   .summary-pnl-row {
-    display: grid !important;
-    grid-template-columns: repeat(3, 1fr) !important;
-    gap: 8px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
     width: 100% !important;
   }
   .summary-pnl-item {
+    display: flex !important;
+    flex-direction: row !important;
+    justify-content: space-between !important;
     align-items: center !important;
-    text-align: center !important;
+    width: 100% !important;
+    border-bottom: 1px dashed rgba(255, 255, 255, 0.08) !important;
+    padding-bottom: 8px !important;
+  }
+  .summary-pnl-item:last-child {
+    border-bottom: none !important;
+    padding-bottom: 0 !important;
+  }
+  .summary-pnl-label {
+    font-size: 13px !important;
+    color: var(--text-sub) !important;
+    margin-bottom: 0 !important;
   }
   .summary-pnl-item .summary-value {
-    font-size: 13px !important;
-    white-space: nowrap;
-    letter-spacing: -0.5px;
+    font-size: 15px !important;
+    font-weight: 700 !important;
+    white-space: nowrap !important;
   }
 }
 
@@ -2187,19 +2201,33 @@ body.force-mobile .summary-middle {
   width: 100% !important;
 }
 body.force-mobile .summary-pnl-row {
-  display: grid !important;
-  grid-template-columns: repeat(3, 1fr) !important;
-  gap: 8px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 10px !important;
   width: 100% !important;
 }
 body.force-mobile .summary-pnl-item {
+  display: flex !important;
+  flex-direction: row !important;
+  justify-content: space-between !important;
   align-items: center !important;
-  text-align: center !important;
+  width: 100% !important;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.08) !important;
+  padding-bottom: 8px !important;
+}
+body.force-mobile .summary-pnl-item:last-child {
+  border-bottom: none !important;
+  padding-bottom: 0 !important;
+}
+body.force-mobile .summary-pnl-label {
+  font-size: 13px !important;
+  color: var(--text-sub) !important;
+  margin-bottom: 0 !important;
 }
 body.force-mobile .summary-pnl-item .summary-value {
-  font-size: 13px !important;
-  white-space: nowrap;
-  letter-spacing: -0.5px;
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  white-space: nowrap !important;
 }
 
 /* 3. 自選股表格：首欄固定 (Sticky) 水平滑動機制 */
@@ -2290,13 +2318,10 @@ body.force-mobile .summary-pnl-item .summary-value {
     grid-template-columns: 40px 30px 2.2fr 1.5fr 1.2fr 1.5fr 1.5fr 1.5fr 1.8fr 1fr 50px !important;
   }
 
-  /* 強制還原隱藏的欄位，呈現完整表格 */
-  .stock-row-summary .col-avg-cost,
-  .stock-row-summary .col-market-val,
-  .stock-row-summary .col-realized,
-  .stock-row-summary .col-tx-count,
-  .stock-row-summary .col-actions,
-  .stock-row-summary div {
+  /* 強制還原隱藏的欄位，呈現完整表格，並防範 grid-area 跑位 */
+  .stock-table-header > div,
+  .stock-row-summary > div {
+    grid-area: auto !important;
     display: block !important;
   }
   .stock-row-summary div[style*="text-align: right"] {
@@ -2384,12 +2409,9 @@ body.force-mobile .stock-row-summary.view-holdings.batch-mode-active {
   grid-template-columns: 40px 30px 2.2fr 1.5fr 1.2fr 1.5fr 1.5fr 1.5fr 1.8fr 1fr 50px !important;
 }
 
-body.force-mobile .stock-row-summary .col-avg-cost,
-body.force-mobile .stock-row-summary .col-market-val,
-body.force-mobile .stock-row-summary .col-realized,
-body.force-mobile .stock-row-summary .col-tx-count,
-body.force-mobile .stock-row-summary .col-actions,
-body.force-mobile .stock-row-summary div {
+body.force-mobile .stock-table-header > div,
+body.force-mobile .stock-row-summary > div {
+  grid-area: auto !important;
   display: block !important;
 }
 body.force-mobile .stock-row-summary div[style*="text-align: right"] {
