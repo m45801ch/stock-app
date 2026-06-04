@@ -32,6 +32,7 @@
 
     // 背景載入台股官方代號與中文名稱字典 (修復問題一與三，提升搜尋速度與中文名稱準確性)
     initLocalDictionary();
+    initAutoRefresh();
   });
 
   // 註冊 PWA Service Worker
@@ -1284,6 +1285,71 @@
       console.warn('[BroadMarket] 抓取即時大盤失敗：', e.message);
       valEl.className = 'stock-down';
       changeEl.className = 'stock-down';
+    }
+  }
+
+  let autoRefreshIntervalId = null;
+  function initAutoRefresh() {
+    const chkAutoRefresh = document.getElementById('chk-auto-refresh');
+    const btnRefreshQuotes = document.getElementById('btn-refresh-quotes');
+
+    if (btnRefreshQuotes) {
+      btnRefreshQuotes.addEventListener('click', async () => {
+        btnRefreshQuotes.disabled = true;
+        const originalText = btnRefreshQuotes.innerHTML;
+        btnRefreshQuotes.innerHTML = '🔄 更新中...';
+        try {
+          await refreshPortfolio();
+          await updateBroadMarketBadge();
+        } catch (e) {
+          console.error(e);
+        } finally {
+          btnRefreshQuotes.innerHTML = originalText;
+          btnRefreshQuotes.disabled = false;
+        }
+      });
+    }
+
+    if (chkAutoRefresh) {
+      const storedState = localStorage.getItem('stock_app_auto_refresh') === 'true';
+      chkAutoRefresh.checked = storedState;
+
+      const toggleInterval = (enabled) => {
+        if (autoRefreshIntervalId) {
+          clearInterval(autoRefreshIntervalId);
+          autoRefreshIntervalId = null;
+        }
+        if (enabled) {
+          autoRefreshIntervalId = setInterval(async () => {
+            const now = new Date();
+            const day = now.getDay();
+            const hours = now.getHours();
+            const minutes = now.getMinutes();
+            const timeVal = hours * 100 + minutes;
+
+            // 台股交易時間週一至週五 08:58 至 13:35
+            const isMarketHours = (day >= 1 && day <= 5) && (timeVal >= 858 && timeVal <= 1335);
+
+            if (isMarketHours) {
+              console.log('交易時間內，自動重整報價中...');
+              await refreshPortfolio();
+              await updateBroadMarketBadge();
+            } else {
+              console.log('非交易時間，跳過自動重整');
+            }
+          }, 30000);
+        }
+      };
+
+      chkAutoRefresh.addEventListener('change', (e) => {
+        const checked = e.target.checked;
+        localStorage.setItem('stock_app_auto_refresh', checked);
+        toggleInterval(checked);
+      });
+
+      if (storedState) {
+        toggleInterval(true);
+      }
     }
   }
 

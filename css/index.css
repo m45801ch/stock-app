@@ -1111,20 +1111,6 @@ select:disabled {
   background-color: rgba(0, 255, 136, 0.03) !important; /* 帶有翠綠色調以做識別 */
 }
 
-.tx-child-row td:nth-child(2) {
-  padding-left: 32px !important;
-  position: relative;
-}
-
-.tx-child-row td:nth-child(2)::before {
-  content: "↳";
-  position: absolute;
-  left: 14px;
-  color: var(--primary-color);
-  font-weight: 700;
-  font-size: 14px;
-}
-
 /* 回復平倉按鈕樣式 */
 .inline-restore-btn {
   background: transparent;
