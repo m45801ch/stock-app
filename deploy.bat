@@ -31,7 +31,7 @@ git branch -M main
 
 echo.
 echo 正在上傳至 GitHub (這可能需要一點時間，若跳出登入視窗請進行驗證)...
-git push -u origin main --force
+git push -u origin main
 
 echo.
 echo ============================================================
