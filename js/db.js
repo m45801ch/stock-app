@@ -464,7 +464,7 @@
     return new Promise(async (resolve, reject) => {
       try {
         const db = await initDB();
-        const tx = db.transaction(['groups', 'stocks', 'transactions'], 'readonly');
+        const tx = db.transaction(['groups', 'stocks', 'transactions', 'deleted_transactions'], 'readonly');
         const data = {};
 
         const getGroups = new Promise((res) => {
@@ -476,8 +476,11 @@
         const getTxs = new Promise((res) => {
           tx.objectStore('transactions').getAll().onsuccess = (e) => { data.transactions = e.target.result; res(); };
         });
+        const getDelTxs = new Promise((res) => {
+          tx.objectStore('deleted_transactions').getAll().onsuccess = (e) => { data.deleted_transactions = e.target.result; res(); };
+        });
 
-        await Promise.all([getGroups, getStocks, getTxs]);
+        await Promise.all([getGroups, getStocks, getTxs, getDelTxs]);
         resolve(data);
       } catch (e) { reject(e); }
     });
@@ -487,11 +490,12 @@
     return new Promise(async (resolve, reject) => {
       try {
         const db = await initDB();
-        const tx = db.transaction(['groups', 'stocks', 'transactions'], 'readwrite');
+        const tx = db.transaction(['groups', 'stocks', 'transactions', 'deleted_transactions'], 'readwrite');
 
         tx.objectStore('groups').clear();
         tx.objectStore('stocks').clear();
         tx.objectStore('transactions').clear();
+        tx.objectStore('deleted_transactions').clear();
 
         if (data.groups) {
           data.groups.forEach((g) => tx.objectStore('groups').add(g));
@@ -510,6 +514,13 @@
           data.transactions.forEach((t) => {
             delete t.id;
             tx.objectStore('transactions').add(t);
+          });
+        }
+
+        if (data.deleted_transactions) {
+          data.deleted_transactions.forEach((t) => {
+            delete t.id;
+            tx.objectStore('deleted_transactions').add(t);
           });
         }
 

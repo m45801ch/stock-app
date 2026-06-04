@@ -369,7 +369,7 @@
       ctx.clearRect(0, 0, w, h);
 
       // 背景橫網格線與時間標記
-      ctx.strokeStyle = '#f1f3f5';
+      ctx.strokeStyle = '#e9dec4'; // 與底色更協調的米沙色格線
       ctx.lineWidth = 1;
       for (let i = 1; i < 5; i++) {
         const yCoord = (h / 5) * i;
@@ -380,8 +380,8 @@
       }
 
       // 時間軸標記：09, 10, 11, 12, 13
-      ctx.fillStyle = '#7f8c8d';
-      ctx.font = '11px sans-serif';
+      ctx.fillStyle = '#05140d'; // 使用深色字體
+      ctx.font = 'bold 11px sans-serif';
       const timeLabels = ['09', '10', '11', '12', '13'];
       timeLabels.forEach((label, idx) => {
         const xCoord = (w / (timeLabels.length - 1)) * idx;
@@ -434,17 +434,40 @@
       ctx.fill();
     }
 
-    // 3. 動作鏈結按鈕
+    // 3. 動作鏈結按鈕 (開啟/關閉新增股票 Modal)
     const linkAddStock = document.getElementById('link-add-stock');
     const linkSortStocks = document.getElementById('link-sort-stocks');
     const linkRenameGroup = document.getElementById('link-rename-group');
     const linkDeleteGroup = document.getElementById('link-delete-group');
 
+    const addStockModal = document.getElementById('add-stock-modal');
+    const addStockModalClose = document.getElementById('add-stock-modal-close');
+    const modalSearchInput = document.getElementById('modal-search-input');
+    const modalSearchResults = document.getElementById('modal-search-results');
+
     linkAddStock?.addEventListener('click', () => {
-      const searchInput = document.getElementById('search-input');
-      if (searchInput) {
-        searchInput.focus();
-        searchInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      if (addStockModal) {
+        addStockModal.style.display = 'flex';
+        if (modalSearchInput) {
+          modalSearchInput.value = '';
+          modalSearchInput.focus();
+        }
+        if (modalSearchResults) {
+          modalSearchResults.style.display = 'none';
+          modalSearchResults.innerHTML = '';
+        }
+      }
+    });
+
+    const closeAddStockModal = () => {
+      if (addStockModal) addStockModal.style.display = 'none';
+    };
+
+    addStockModalClose?.addEventListener('click', closeAddStockModal);
+    
+    addStockModal?.addEventListener('click', (e) => {
+      if (e.target === addStockModal) {
+        closeAddStockModal();
       }
     });
 

@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="./icons/icon-192.png">
   
   <!-- 樣式表 -->
-  <link rel="stylesheet" href="./css/index.css?v=20260604_3">
+  <link rel="stylesheet" href="./css/index.css?v=20260604_4">
 </head>
 <body>
 
@@ -99,8 +99,6 @@
         <button id="btn-refresh-quotes" class="btn-pill" style="padding: 4px 10px; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;">
           🔄 立即更新
         </button>
-        <button class="btn-pill-vip" disabled>📅 自選股行事曆 <span class="badge-vip">VIP</span></button>
-        <button id="btn-health-check" class="btn-pill">投資健檢</button>
       </div>
     </div>
 
@@ -599,15 +597,36 @@
     </div>
   </div>
 
+  <!-- 彈出視窗 4：搜尋並新增股票 Modal -->
+  <div id="add-stock-modal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 450px;">
+      <div class="modal-header">
+        <h2>搜尋並新增股票</h2>
+        <button id="add-stock-modal-close" class="modal-close-btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group" style="position: relative; margin-bottom: 0;">
+          <label for="modal-search-input">請輸入股票名稱或代號 (按下 Enter 進行搜尋)：</label>
+          <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+            <input type="text" id="modal-search-input" class="form-control" placeholder="搜尋股名/股號 (例如: 2330, 台積電)..." autocomplete="off" style="flex: 1;">
+            <button id="modal-search-btn" class="btn-primary" style="padding: 10px 16px; border-radius: 4px; font-size: 14px;">搜尋</button>
+          </div>
+          <!-- 搜尋結果面板 -->
+          <div id="modal-search-results" class="search-results-panel" style="position: static; display: none; max-height: 250px; overflow-y: auto; width: 100%;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- 主程式與各模組 (加上版本號以強制避免瀏覽器快取舊代碼) -->
-  <script src="./js/stock_data.js?v=20260604_3"></script>
-  <script src="./js/utils.js?v=20260604_3"></script>
-  <script src="./js/db.js?v=20260604_3"></script>
-  <script src="./js/api.js?v=20260604_3"></script>
-  <script src="./js/sync.js?v=20260604_3"></script>
-  <script src="./js/search.js?v=20260604_3"></script>
-  <script src="./js/transaction.js?v=20260604_3"></script>
-  <script src="./js/portfolio.js?v=20260604_3"></script>
-  <script src="./js/app.js?v=20260604_3"></script>
+  <script src="./js/stock_data.js?v=20260604_4"></script>
+  <script src="./js/utils.js?v=20260604_4"></script>
+  <script src="./js/db.js?v=20260604_4"></script>
+  <script src="./js/api.js?v=20260604_4"></script>
+  <script src="./js/sync.js?v=20260604_4"></script>
+  <script src="./js/search.js?v=20260604_4"></script>
+  <script src="./js/transaction.js?v=20260604_4"></script>
+  <script src="./js/portfolio.js?v=20260604_4"></script>
+  <script src="./js/app.js?v=20260604_4"></script>
 </body>
 </html>

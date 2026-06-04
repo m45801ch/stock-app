@@ -58,6 +58,51 @@
         searchResults.style.display = 'none';
       }
     });
+
+    // 5. 初始化彈出式視窗搜尋框 (Modal Search)
+    const modalSearchInput = document.getElementById('modal-search-input');
+    const modalSearchResults = document.getElementById('modal-search-results');
+    const modalSearchBtn = document.getElementById('modal-search-btn');
+
+    if (modalSearchInput && modalSearchResults) {
+      async function triggerModalSearch() {
+        const query = modalSearchInput.value.trim();
+        if (query.length < 2) {
+          modalSearchResults.innerHTML = '<div class="search-no-result">請輸入至少 2 個字元以進行搜尋</div>';
+          modalSearchResults.style.display = 'block';
+          return;
+        }
+
+        modalSearchResults.innerHTML = '<div class="search-loading">搜尋中...</div>';
+        modalSearchResults.style.display = 'block';
+
+        try {
+          const results = await window.StockAPI.searchStock(query);
+          renderResults(results, modalSearchResults, onStockAdded);
+        } catch (err) {
+          modalSearchResults.innerHTML = '<div class="search-error">搜尋失敗</div>';
+        }
+      }
+
+      modalSearchInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          triggerModalSearch();
+        }
+      });
+
+      modalSearchBtn?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        triggerModalSearch();
+      });
+
+      modalSearchInput.addEventListener('input', () => {
+        if (modalSearchInput.value.trim() === '') {
+          modalSearchResults.style.display = 'none';
+          modalSearchResults.innerHTML = '';
+        }
+      });
+    }
   }
 
   function updateSearchActiveGroup(groupId) {

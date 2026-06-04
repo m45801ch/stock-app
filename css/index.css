@@ -1249,10 +1249,11 @@ select:disabled {
 .market-main-chart {
   display: flex;
   flex-direction: column;
-  background: #ffffff;
-  border: 1px solid var(--border-color);
+  background: #f5ebd0;          /* 改為雅緻米黃色 */
+  border: 1px solid #d0c498;     /* 金色系邊框 */
   border-radius: var(--border-radius);
   padding: 16px;
+  color: #05140d;                /* 文字改為深色 */
 }
 
 .market-detail-header {
@@ -1287,16 +1288,16 @@ select:disabled {
 
 .market-large-vol {
   font-size: 12px;
-  color: var(--text-sub);
+  color: #55665c !important;     /* 深綠灰，高對比 */
 }
 
 .market-detail-table {
   display: flex;
   gap: 24px;
-  background: #f8f9fa;
+  background: #e9dec4;          /* 稍深的米金沙色 */
   padding: 8px 16px;
   border-radius: 6px;
-  border: 1px solid var(--border-color);
+  border: 1px solid #d0c498;
 }
 
 .market-dt-item {
@@ -1307,22 +1308,22 @@ select:disabled {
 
 .market-dt-label {
   font-size: 11px;
-  color: var(--text-sub);
+  color: #55665c !important;     /* 深綠灰，高對比 */
   margin-bottom: 2px;
 }
 
 .market-dt-val {
   font-size: 13px;
   font-weight: 600;
-  color: var(--text-main);
+  color: #000000 !important;     /* 強制改為黑色 */
 }
 
 .chart-canvas-container {
   position: relative;
   width: 100%;
   height: 280px;
-  background: #fafafa;
-  border: 1px dashed var(--border-color);
+  background: #fdfaf2;          /* 極淺奶油色 */
+  border: 1px dashed #d0c498;
   border-radius: var(--border-radius);
   overflow: hidden;
 }
