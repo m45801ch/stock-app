@@ -33,6 +33,7 @@
     // 背景載入台股官方代號與中文名稱字典 (修復問題一與三，提升搜尋速度與中文名稱準確性)
     initLocalDictionary();
     initAutoRefresh();
+    initLayoutToggle();
   });
 
   // 註冊 PWA Service Worker
@@ -1397,6 +1398,56 @@
         toggleInterval(true);
       }
     }
+  }
+
+  function initLayoutToggle() {
+    const btn = document.getElementById('btn-toggle-layout');
+    if (!btn) return;
+
+    let currentMode = localStorage.getItem('layout_mode_override') || 'auto';
+
+    const applyMode = (mode) => {
+      document.body.classList.remove('force-mobile', 'force-desktop');
+      let effectiveMode = mode;
+      
+      if (mode === 'auto') {
+        // 偵測是否為行動裝置或以 PWA/Standalone 模式開啟
+        const isMobileUA = /Mobi|Android|iPhone|iPad|Windows Phone/i.test(navigator.userAgent);
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+        
+        if (isMobileUA || isStandalone) {
+          effectiveMode = 'mobile';
+        } else {
+          effectiveMode = 'desktop';
+        }
+      }
+
+      if (effectiveMode === 'desktop') {
+        document.body.classList.add('force-desktop');
+        btn.innerHTML = '💻 版面: 電腦' + (mode === 'auto' ? ' (自動)' : '');
+      } else if (effectiveMode === 'mobile') {
+        document.body.classList.add('force-mobile');
+        btn.innerHTML = '📱 版面: 手機' + (mode === 'auto' ? ' (自動)' : '');
+      }
+      
+      localStorage.setItem('layout_mode_override', mode);
+      if (window.refreshPortfolio) {
+        window.refreshPortfolio();
+      }
+    };
+
+    btn.addEventListener('click', () => {
+      if (currentMode === 'auto') {
+        currentMode = 'desktop';
+      } else if (currentMode === 'desktop') {
+        currentMode = 'mobile';
+      } else {
+        currentMode = 'auto';
+      }
+      applyMode(currentMode);
+    });
+
+    applyMode(currentMode);
   }
 
   window.showStockDetailView = showStockDetailView;
