@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="./icons/icon-192.png">
   
   <!-- 樣式表 -->
-  <link rel="stylesheet" href="./css/index.css?v=20260604_4">
+  <link rel="stylesheet" href="./css/index.css?v=20260604_5">
 </head>
 <body>
 
@@ -45,6 +45,35 @@
   <!-- 主內容區 -->
   <main class="main-container">
     
+    <!-- PWA 安裝提示橫幅 -->
+    <div id="pwa-install-banner" class="pwa-banner" style="display: none;">
+      <div class="pwa-banner-content">
+        <span class="pwa-banner-icon">📱</span>
+        <div class="pwa-banner-text">
+          <div class="pwa-banner-title">安裝「台股追蹤」App</div>
+          <div class="pwa-banner-subtitle">將程式安裝到桌面，享有更流暢的全螢幕與離線使用體驗！</div>
+        </div>
+      </div>
+      <div class="pwa-banner-actions">
+        <button id="btn-pwa-install" class="btn-pwa-action">立即安裝</button>
+        <button id="btn-pwa-close" class="btn-pwa-close" aria-label="關閉">✕</button>
+      </div>
+    </div>
+
+    <!-- iOS Safari PWA 安裝指示橫幅 -->
+    <div id="pwa-ios-banner" class="pwa-banner" style="display: none;">
+      <div class="pwa-banner-content">
+        <span class="pwa-banner-icon">🍏</span>
+        <div class="pwa-banner-text">
+          <div class="pwa-banner-title">加到主畫面使用</div>
+          <div class="pwa-banner-subtitle">請點擊 Safari 底部的分享按鈕 <strong style="font-size: 14px;">⎋</strong>，下拉並選擇「加入主畫面」。</div>
+        </div>
+      </div>
+      <div class="pwa-banner-actions">
+        <button id="btn-pwa-ios-close" class="btn-pwa-close" aria-label="關閉">✕</button>
+      </div>
+    </div>
+
     <!-- 群組 Tabs 區 -->
     <div class="group-tabs-container">
       <div id="group-tabs" class="tabs-wrapper">

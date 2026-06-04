@@ -2029,5 +2029,318 @@ body.force-desktop .sub-tab {
   margin-right: 8px !important;
 }
 
+/* ============================================================
+   PWA 安裝提示橫幅樣式
+   ============================================================ */
+.pwa-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: linear-gradient(135deg, #fbf7eb 0%, #f4e9cd 100%);
+  border: 1px solid #e5d7af;
+  border-radius: var(--border-radius);
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  animation: slideDown 0.3s ease-out;
+}
 
+@keyframes slideDown {
+  from { transform: translateY(-10px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.pwa-banner-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.pwa-banner-icon {
+  font-size: 24px;
+}
+
+.pwa-banner-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.pwa-banner-title {
+  font-weight: 700;
+  font-size: 14px;
+  color: #111111;
+}
+
+.pwa-banner-subtitle {
+  font-size: 12px;
+  color: #444444;
+  margin-top: 2px;
+}
+
+.pwa-banner-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.btn-pwa-action {
+  background: var(--primary-color);
+  color: #ffffff;
+  border: none;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 20px;
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+}
+
+.btn-pwa-action:hover {
+  background: var(--primary-dark, #2980b9);
+  transform: translateY(-1px);
+}
+
+.btn-pwa-close {
+  background: transparent;
+  border: none;
+  font-size: 16px;
+  color: #888888;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s;
+}
+
+.btn-pwa-close:hover {
+  color: #111111;
+}
+@media (max-width: 600px) {
+  .pwa-banner {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  .pwa-banner-actions {
+    justify-content: flex-end;
+  }
+}
+
+/* ============================================================
+   行動端版面與滿版極致優化 (修復手機端與強制手機模式排版)
+   ============================================================ */
+
+/* 1. 滿版優化，防止橫向溢出導致頁面縮小與左右白邊 */
+html, body {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+@media (max-width: 768px) {
+  body {
+    padding: 8px !important;
+  }
+  .main-container {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 0 !important;
+  }
+}
+
+body.force-mobile {
+  padding: 8px !important;
+}
+body.force-mobile .main-container {
+  width: 100% !important;
+  max-width: 100% !important;
+  padding: 0 !important;
+}
+
+/* 2. 資產總覽看板 (PNL) 行動端縮放與防止擠壓 */
+@media (max-width: 768px) {
+  .summary-middle {
+    margin: 12px 0 !important;
+    width: 100% !important;
+  }
+  .summary-pnl-row {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+  .summary-pnl-item {
+    align-items: center !important;
+    text-align: center !important;
+  }
+  .summary-pnl-item .summary-value {
+    font-size: 13px !important;
+    white-space: nowrap;
+    letter-spacing: -0.5px;
+  }
+}
+
+body.force-mobile .summary-middle {
+  margin: 12px 0 !important;
+  width: 100% !important;
+}
+body.force-mobile .summary-pnl-row {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 8px !important;
+  width: 100% !important;
+}
+body.force-mobile .summary-pnl-item {
+  align-items: center !important;
+  text-align: center !important;
+}
+body.force-mobile .summary-pnl-item .summary-value {
+  font-size: 13px !important;
+  white-space: nowrap;
+  letter-spacing: -0.5px;
+}
+
+/* 3. 摘要資料分頁：在手機/強制手機模式下，強制以完整表格形式呈現並支援水平滾動 */
+@media (max-width: 768px) {
+  .portfolio-table {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    max-width: 100% !important;
+    border-radius: var(--border-radius);
+  }
+  
+  .stock-table-header.view-summary {
+    display: grid !important;
+    min-width: 1200px !important;
+  }
+  
+  .stock-row-summary.view-summary {
+    display: grid !important;
+    grid-template-columns: 40px 2fr 1fr 1fr 1.1fr 1fr 1fr 1fr 1fr 1fr 1fr 1.1fr 1.1fr 50px !important;
+    grid-template-areas: none !important;
+    gap: 0 !important;
+    padding: 16px !important;
+    min-width: 1200px !important;
+  }
+  
+  .stock-table-header.view-summary.batch-mode-active,
+  .stock-row-summary.view-summary.batch-mode-active {
+    grid-template-columns: 40px 30px 2fr 1fr 1fr 1.1fr 1fr 1fr 1fr 1fr 1fr 1fr 1.1fr 1.1fr 50px !important;
+  }
+  
+  .stock-row-summary.view-summary .col-avg-cost,
+  .stock-row-summary.view-summary .col-market-val,
+  .stock-row-summary.view-summary .col-realized,
+  .stock-row-summary.view-summary .col-tx-count,
+  .stock-row-summary.view-summary .col-actions,
+  .stock-row-summary.view-summary div {
+    display: block !important;
+  }
+  
+  .stock-row-summary.view-summary div[style*="text-align: right"] {
+    text-align: right !important;
+  }
+}
+
+body.force-mobile .portfolio-table {
+  overflow-x: auto !important;
+  -webkit-overflow-scrolling: touch;
+  max-width: 100% !important;
+  border-radius: var(--border-radius);
+}
+
+body.force-mobile .stock-table-header.view-summary {
+  display: grid !important;
+  min-width: 1200px !important;
+}
+
+body.force-mobile .stock-row-summary.view-summary {
+  display: grid !important;
+  grid-template-columns: 40px 2fr 1fr 1fr 1.1fr 1fr 1fr 1fr 1fr 1fr 1fr 1.1fr 1.1fr 50px !important;
+  grid-template-areas: none !important;
+  gap: 0 !important;
+  padding: 16px !important;
+  min-width: 1200px !important;
+}
+
+body.force-mobile .stock-table-header.view-summary.batch-mode-active,
+body.force-mobile .stock-row-summary.view-summary.batch-mode-active {
+  grid-template-columns: 40px 30px 2fr 1fr 1fr 1.1fr 1fr 1fr 1fr 1fr 1fr 1fr 1.1fr 1.1fr 50px !important;
+}
+
+body.force-mobile .stock-row-summary.view-summary .col-avg-cost,
+body.force-mobile .stock-row-summary.view-summary .col-market-val,
+body.force-mobile .stock-row-summary.view-summary .col-realized,
+body.force-mobile .stock-row-summary.view-summary .col-tx-count,
+body.force-mobile .stock-row-summary.view-summary .col-actions,
+body.force-mobile .stock-row-summary.view-summary div {
+  display: block !important;
+}
+
+body.force-mobile .stock-row-summary.view-summary div[style*="text-align: right"] {
+  text-align: right !important;
+}
+
+/* 4. 大盤行情：在手機/強制手機模式下，改為 2x2 指數卡片 + 疊加下方大圖表 */
+@media (max-width: 768px) {
+  .market-grid {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+  .market-left-cards {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+  }
+  .market-main-chart {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  .market-detail-header {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+  }
+  .market-detail-table {
+    display: grid !important;
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 6px !important;
+    padding: 8px !important;
+    width: 100% !important;
+  }
+  .market-dt-item {
+    align-items: center !important;
+  }
+}
+
+body.force-mobile .market-grid {
+  grid-template-columns: 1fr !important;
+  gap: 16px !important;
+}
+body.force-mobile .market-left-cards {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 8px !important;
+}
+body.force-mobile .market-main-chart {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+body.force-mobile .market-detail-header {
+  flex-direction: column !important;
+  align-items: stretch !important;
+  gap: 12px !important;
+}
+body.force-mobile .market-detail-table {
+  display: grid !important;
+  grid-template-columns: repeat(4, 1fr) !important;
+  gap: 6px !important;
+  padding: 8px !important;
+  width: 100% !important;
+}
+body.force-mobile .market-dt-item {
+  align-items: center !important;
+}
 

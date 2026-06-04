@@ -34,6 +34,7 @@
     initLocalDictionary();
     initAutoRefresh();
     initLayoutToggle();
+    initPwaInstallPrompt();
   });
 
   // 註冊 PWA Service Worker
@@ -58,6 +59,71 @@
           });
         })
         .catch(err => console.log('Service Worker 註冊失敗', err));
+    }
+  }
+
+  let deferredPrompt;
+  function initPwaInstallPrompt() {
+    const banner = document.getElementById('pwa-install-banner');
+    const installBtn = document.getElementById('btn-pwa-install');
+    const closeBtn = document.getElementById('btn-pwa-close');
+    const iosBanner = document.getElementById('pwa-ios-banner');
+    const iosCloseBtn = document.getElementById('btn-pwa-ios-close');
+
+    // 檢查使用者是否已手動關閉過安裝提示
+    const isBannerDismissed = localStorage.getItem('pwa_banner_dismissed') === 'true';
+
+    // 偵測是否已是 Standalone 獨立視窗開啟
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+
+    // 1. Android/Chrome/Edge 等瀏覽器的安裝流程
+    window.addEventListener('beforeinstallprompt', (e) => {
+      // 避免瀏覽器預設的安裝提示彈出
+      e.preventDefault();
+      // 暫存此 event 供稍後點選安裝按鈕時調用
+      deferredPrompt = e;
+
+      // 如果使用者沒手動關閉過，且非以獨立視窗開啟，就顯示提示橫幅
+      if (!isBannerDismissed && !isStandalone && banner) {
+        banner.style.display = 'flex';
+      }
+    });
+
+    if (installBtn) {
+      installBtn.addEventListener('click', async () => {
+        if (!deferredPrompt) return;
+        // 顯示安裝提示
+        deferredPrompt.prompt();
+        // 等待使用者決定
+        const { outcome } = await deferredPrompt.userChoice;
+        console.log(`PWA 安裝選擇結果: ${outcome}`);
+        // 清理暫存的 event
+        deferredPrompt = null;
+        // 隱藏橫幅
+        if (banner) banner.style.display = 'none';
+      });
+    }
+
+    if (closeBtn && banner) {
+      closeBtn.addEventListener('click', () => {
+        banner.style.display = 'none';
+        localStorage.setItem('pwa_banner_dismissed', 'true');
+      });
+    }
+
+    // 2. iOS Safari 的專屬提示流程
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+
+    if (isIOS && isSafari && !isStandalone && !isBannerDismissed && iosBanner) {
+      iosBanner.style.display = 'flex';
+    }
+
+    if (iosCloseBtn && iosBanner) {
+      iosCloseBtn.addEventListener('click', () => {
+        iosBanner.style.display = 'none';
+        localStorage.setItem('pwa_banner_dismissed', 'true');
+      });
     }
   }
 
