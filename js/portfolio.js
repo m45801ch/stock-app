@@ -288,18 +288,20 @@
               </tr>
             `;
 
-            // B. 渲染子交易 (平倉賣出列，向右縮排)
-            // 修改：預設加上 style="display: ${isChildExpanded ? 'table-row' : 'none'};" 實現隱藏與展開！
             children.forEach(childTx => {
               const childVal = childTx.shares * childTx.price;
               
               txRowsHTML += `
                 <tr class="tx-child-row" data-id="${childTx.id}" data-parent-id="${parentTx.id}" style="display: ${isChildExpanded ? 'table-row' : 'none'};">
+                  <td></td> <!-- 第一欄複選框留空對齊 -->
                   <td>
                     <input type="date" class="inline-edit-input inline-date" data-id="${childTx.id}" value="${childTx.date}">
                   </td>
                   <td>
-                    <span class="tx-status-sell" style="font-weight:700; color:var(--stock-down-color);">賣出</span>
+                    <div style="display:flex; align-items:center; gap:4px; padding-left: 8px;">
+                      <span style="color:#adb5bd; font-family: monospace; font-weight: bold; margin-right: 4px;">└─</span>
+                      <span class="tx-status-sell" style="font-weight:700; color:var(--stock-down-color);">賣出</span>
+                    </div>
                   </td>
                   <td>
                     <div style="display:flex; align-items:center; gap:4px;">
