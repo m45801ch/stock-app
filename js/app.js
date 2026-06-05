@@ -1291,10 +1291,11 @@
   // CORS Proxy Web App Fallback 工具 (與大盤行情共用)
   async function fetchWithProxyFallback(targetUrl) {
     const PROXIES = [
-      null,
-      'https://corsproxy.io/?',
       'https://api.codetabs.com/v1/proxy/?quest=',
       'https://api.allorigins.win/raw?url=',
+      'https://cors-proxy.htmldev.workers.dev/?url=',
+      'https://corsproxy.io/?',
+      null
     ];
     let lastError = null;
     for (const proxy of PROXIES) {
@@ -1303,15 +1304,25 @@
         const response = await fetch(url);
         if (response.ok) {
           const text = await response.text();
+          let parsed;
           try {
-            return JSON.parse(text);
+            parsed = JSON.parse(text);
+            if (parsed && typeof parsed === 'object' && 'contents' in parsed) {
+              parsed = JSON.parse(parsed.contents);
+            }
           } catch (e) {
             if (text.includes('"contents":')) {
               const wrapped = JSON.parse(text);
-              return JSON.parse(wrapped.contents);
-            }
-            throw e;
+              parsed = JSON.parse(wrapped.contents);
+            } else throw e;
           }
+
+          // 阻擋代理回傳之無效或錯誤 JSON 結構（例如 corsproxy.io 付費提示）
+          if (parsed && parsed.error) {
+            throw new Error(`代理回傳錯誤訊息: ${JSON.stringify(parsed.error)}`);
+          }
+
+          return parsed;
         }
       } catch (err) {
         lastError = err;
@@ -1335,12 +1346,24 @@
 
       // 1. 直連抓取加權指數 (^TWII)
       const twiiUrl = `https://query1.finance.yahoo.com/v8/finance/chart/%5ETWII?interval=1d&range=1d&_=${Date.now()}`;
-      const twiiData = await window.StockAPI.fetchJSONP(twiiUrl, 4000);
+      let twiiData;
+      try {
+        twiiData = await window.StockAPI.fetchJSONP(twiiUrl, 4000);
+      } catch (e) {
+        console.warn('[BroadMarket] 嘗試 JSONP 抓取加權指數失敗，改用代理：', e.message);
+        twiiData = await fetchWithProxyFallback(twiiUrl);
+      }
       const twiiMeta = twiiData?.chart?.result?.[0]?.meta;
 
       // 2. 直連抓取櫃買指數 (^TWOII)
       const twoiiUrl = `https://query1.finance.yahoo.com/v8/finance/chart/%5ETWOII?interval=1d&range=1d&_=${Date.now()}`;
-      const twoiiData = await window.StockAPI.fetchJSONP(twoiiUrl, 4000);
+      let twoiiData;
+      try {
+        twoiiData = await window.StockAPI.fetchJSONP(twoiiUrl, 4000);
+      } catch (e) {
+        console.warn('[BroadMarket] 嘗試 JSONP 抓取櫃買指數失敗，改用代理：', e.message);
+        twoiiData = await fetchWithProxyFallback(twoiiUrl);
+      }
       const twoiiMeta = twoiiData?.chart?.result?.[0]?.meta;
 
       if (twiiMeta) {

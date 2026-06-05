@@ -117,6 +117,20 @@
         summaryValuation.textContent = `$${window.StockUtils.formatNumber(totalMarketValue, 0)} TWD`;
       }
 
+      const updateTimeEl = document.getElementById('portfolio-update-time');
+      if (updateTimeEl) {
+        const now = new Date();
+        const timeStr = now.toLocaleTimeString('zh-TW', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        updateTimeEl.textContent = `(更新時間: ${timeStr})`;
+      }
+
+      const summaryUpdateTime = document.getElementById('summary-update-time');
+      if (summaryUpdateTime) {
+        const now = new Date();
+        const timeStr = now.toLocaleTimeString('zh-TW', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        summaryUpdateTime.textContent = `${timeStr} 更新`;
+      }
+
       if (summaryTodayChange) {
         const prevDayMarketValue = totalMarketValue - totalTodayChange;
         const todayChangePercent = prevDayMarketValue > 0 ? (totalTodayChange / prevDayMarketValue) * 100 : 0;

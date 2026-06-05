@@ -41,9 +41,11 @@
   // CORS Proxy 備援
   // ============================================================
   const PROXIES = [
+    'https://api.codetabs.com/v1/proxy/?quest=',
     'https://api.allorigins.win/raw?url=',
-    'https://cors-proxy.htmldev.workers.dev/?url=', // 穩定的 Cloudflare Worker Proxy 備援
+    'https://cors-proxy.htmldev.workers.dev/?url=', 
     'https://corsproxy.io/?',
+    null
   ];
 
   // Sticky proxy：記住上次成功的 proxy，下次排第一
@@ -71,7 +73,7 @@
 
     let lastError = null;
     for (const proxy of orderedProxies) {
-      const url = `${proxy}${encodeURIComponent(targetUrl)}`;
+      const url = proxy ? `${proxy}${encodeURIComponent(targetUrl)}` : targetUrl;
       try {
         const response = await fetchWithTimeout(url);
         if (response.ok) {
@@ -79,12 +81,21 @@
           let parsed;
           try {
             parsed = JSON.parse(text);
+            if (parsed && typeof parsed === 'object' && 'contents' in parsed) {
+              parsed = JSON.parse(parsed.contents);
+            }
           } catch (e) {
             if (text.includes('"contents":')) {
               const wrapped = JSON.parse(text);
               parsed = JSON.parse(wrapped.contents);
             } else throw e;
           }
+
+          // 阻擋代理回傳之無效或錯誤 JSON 結構（例如 corsproxy.io 付費提示）
+          if (parsed && parsed.error) {
+            throw new Error(`代理回傳錯誤訊息: ${JSON.stringify(parsed.error)}`);
+          }
+
           // 記住這次成功的 proxy index
           _lastWorkingProxyIdx = PROXIES.indexOf(proxy);
           return parsed;
