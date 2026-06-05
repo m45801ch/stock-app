@@ -41,10 +41,9 @@
   // CORS Proxy 備援
   // ============================================================
   const PROXIES = [
-    'https://api.codetabs.com/v1/proxy/?quest=',
-    'https://api.allorigins.win/raw?url=',
-    'https://cors-proxy.htmldev.workers.dev/?url=', 
     'https://corsproxy.io/?',
+    'https://api.allorigins.win/raw?url=',
+    'https://api.codetabs.com/v1/proxy/?quest=',
     null
   ];
 
@@ -64,7 +63,7 @@
     }
   }
 
-  async function fetchWithProxyFallback(targetUrl) {
+  async function fetchWithProxyFallback(targetUrl, validateFn = null) {
     // 把上次成功的 proxy 移到最前面
     const orderedProxies = [
       ...PROXIES.slice(_lastWorkingProxyIdx),
@@ -96,6 +95,11 @@
             throw new Error(`代理回傳錯誤訊息: ${JSON.stringify(parsed.error)}`);
           }
 
+          // 驗證回傳的資料結構是否符合該 API 預期
+          if (validateFn && !validateFn(parsed)) {
+            throw new Error('回傳資料格式不符合預期（可能被代理伺服器攔截）');
+          }
+
           // 記住這次成功的 proxy index
           _lastWorkingProxyIdx = PROXIES.indexOf(proxy);
           return parsed;
@@ -122,7 +126,7 @@
 
     let data;
     try {
-      data = await fetchWithProxyFallback(url);
+      data = await fetchWithProxyFallback(url, (json) => json && Array.isArray(json.msgArray));
     } catch (e) {
       console.warn('[TWSE] 代理請求失敗：', e.message);
       throw e;
@@ -222,7 +226,7 @@
       try {
         const symbolString = missing.join(',');
         const targetUrl = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${symbolString}&_=${Date.now()}`;
-        const data = await fetchWithProxyFallback(targetUrl);
+        const data = await fetchWithProxyFallback(targetUrl, (json) => json && json.quoteResponse && Array.isArray(json.quoteResponse.result));
         const quoteList = data.quoteResponse?.result || [];
 
         quoteList.forEach(q => {
@@ -322,7 +326,7 @@
     // 2. 備援使用 Yahoo Finance Chart 經由 Proxy 查詢
     const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${sym}?interval=1d&range=2d&_=${Date.now()}`;
     try {
-      const data = await fetchWithProxyFallback(targetUrl);
+      const data = await fetchWithProxyFallback(targetUrl, (json) => json && json.chart && Array.isArray(json.chart.result));
       const result = data.chart?.result?.[0];
       if (result) {
         const meta = result.meta;
@@ -383,7 +387,7 @@
       }
 
       const targetUrl = `https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(cleanKeyword)}&lang=zh-Hant-TW&quotesCount=10`;
-      const data = await fetchWithProxyFallback(targetUrl);
+      const data = await fetchWithProxyFallback(targetUrl, (json) => json && Array.isArray(json.quotes));
       const quotes = data.quotes || [];
       return quotes
         .filter(q => {
