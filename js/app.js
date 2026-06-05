@@ -1090,7 +1090,7 @@
       // 取得長達 15 年的歷史數據以解析 dividend
       const chartUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${lookupSymbol}?interval=1mo&range=15y&events=div&_=${Date.now()}`;
       // 直接呼叫直連或 Proxy Fallback 取得
-      const resData = await fetchWithProxyFallback(chartUrl);
+      const resData = await window.StockAPI.fetchWithProxyFallback(chartUrl);
       const divEvents = resData.chart?.result?.[0]?.events?.dividends;
       
       if (divEvents && Object.keys(divEvents).length > 0) {
@@ -1296,48 +1296,7 @@
     ctx.textAlign = 'left'; // 恢復默認
   }
 
-  // CORS Proxy Web App Fallback 工具 (與大盤行情共用)
-  async function fetchWithProxyFallback(targetUrl) {
-    const PROXIES = [
-      'https://api.codetabs.com/v1/proxy/?quest=',
-      'https://api.allorigins.win/raw?url=',
-      'https://cors-proxy.htmldev.workers.dev/?url=',
-      'https://corsproxy.io/?',
-      null
-    ];
-    let lastError = null;
-    for (const proxy of PROXIES) {
-      const url = proxy ? `${proxy}${encodeURIComponent(targetUrl)}` : targetUrl;
-      try {
-        const response = await fetch(url);
-        if (response.ok) {
-          const text = await response.text();
-          let parsed;
-          try {
-            parsed = JSON.parse(text);
-            if (parsed && typeof parsed === 'object' && 'contents' in parsed) {
-              parsed = JSON.parse(parsed.contents);
-            }
-          } catch (e) {
-            if (text.includes('"contents":')) {
-              const wrapped = JSON.parse(text);
-              parsed = JSON.parse(wrapped.contents);
-            } else throw e;
-          }
-
-          // 阻擋代理回傳之無效或錯誤 JSON 結構（例如 corsproxy.io 付費提示）
-          if (parsed && parsed.error) {
-            throw new Error(`代理回傳錯誤訊息: ${JSON.stringify(parsed.error)}`);
-          }
-
-          return parsed;
-        }
-      } catch (err) {
-        lastError = err;
-      }
-    }
-    throw lastError || new Error('取得股利失敗');
-  }
+  // 已移至 window.StockAPI.fetchWithProxyFallback 共用
 
   // ============================================================
   // 更新動作橫列右側的大盤加權指數標籤 (改用免 Proxy Yahoo JSONP 直連)

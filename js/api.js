@@ -41,9 +41,9 @@
   // CORS Proxy 備援
   // ============================================================
   const PROXIES = [
-    'https://corsproxy.io/?',
     'https://api.allorigins.win/raw?url=',
     'https://api.codetabs.com/v1/proxy/?quest=',
+    'https://corsproxy.io/?',
     null
   ];
 
@@ -198,6 +198,13 @@
   // ============================================================
   // 批次取得即時報價 (主入口 - 支援本地與線上智慧模式 + 快取機制)
   // ============================================================
+  const SYMBOL_MAPPING = {
+    'T00.TW': '^TWII',
+    'O00.TWO': '^TWOII',
+    'T13.TW': '^TELI',
+    'T17.TW': '^TFNI'
+  };
+
   async function fetchBatchQuotes(symbols) {
     if (!symbols || symbols.length === 0) return {};
 
@@ -210,82 +217,77 @@
 
     const results = {};
 
-    // 1. 優先使用 TWSE 進行批次查詢 (經由 Proxy)
-    try {
-      const twseData = await fetchTWSEQuotes(normalized);
-      Object.assign(results, twseData);
-      console.log(`[TWSE] 批次共取得 ${Object.keys(twseData).length}/${normalized.length} 筆`);
-    } catch (err) {
-      console.warn('[TWSE] 批次查詢失敗，將進入 Yahoo 補救:', err.message);
-    }
-
-    // 2. 補救 missing 或價格為 0 的股票 (使用 Yahoo Finance API + Proxy)
-    const missing = normalized.filter(sym => !results[sym] || results[sym].price === 0 || results[sym].offline);
-    if (missing.length > 0) {
-      console.log(`[Yahoo 補救] ${missing.length} 檔:`, missing);
+    // 並行發送 Yahoo Chart 請求
+    const fetchPromises = normalized.map(async (sym) => {
+      const yahooSym = SYMBOL_MAPPING[sym] || sym;
+      const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${yahooSym}?interval=1d&range=2d&_=${Date.now()}`;
       try {
-        const symbolString = missing.join(',');
-        const targetUrl = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${symbolString}&_=${Date.now()}`;
-        const data = await fetchWithProxyFallback(targetUrl, (json) => json && json.quoteResponse && Array.isArray(json.quoteResponse.result));
-        const quoteList = data.quoteResponse?.result || [];
-
-        quoteList.forEach(q => {
-          const sym = q.symbol.toUpperCase();
-          const price = q.regularMarketPrice || q.regularMarketPreviousClose || q.chartPreviousClose || 0;
-          const change = q.regularMarketChange ?? 0;
-          const changePercent = q.regularMarketChangePercent ?? 0;
-          const openP = q.regularMarketOpen || 0;
-          const prevClose = q.regularMarketPreviousClose || 0;
-          const highP = q.regularMarketDayHigh || 0;
-          const lowP = q.regularMarketDayLow || 0;
-          const volume = q.regularMarketVolume ? q.regularMarketVolume / 1000 : 0; // 股轉張
-          const bid = q.bid || 0;
-          const ask = q.ask || 0;
+        const data = await fetchWithProxyFallback(targetUrl, (json) => json && json.chart && Array.isArray(json.chart.result));
+        const result = data.chart?.result?.[0];
+        if (result) {
+          const meta = result.meta;
+          const price = meta.regularMarketPrice || meta.chartPreviousClose || 0;
+          const prevClose = meta.previousClose || meta.chartPreviousClose || price;
+          const change = price - prevClose;
+          const changePercent = prevClose ? (change / prevClose) * 100 : 0;
           
           let time = '-';
-          if (q.regularMarketTime) {
-            const dateObj = new Date(q.regularMarketTime * 1000);
+          if (meta.regularMarketTime) {
+            const dateObj = new Date(meta.regularMarketTime * 1000);
             time = dateObj.toLocaleTimeString('zh-TW', { hour12: false, hour: '2-digit', minute: '2-digit' });
           }
 
+          // 獲取本地字典名稱，填補中文名稱 (若有)
+          let displayName = '';
+          if (sym === 'T00.TW') displayName = '加權指數';
+          else if (sym === 'O00.TWO') displayName = '櫃買指數';
+          else if (sym === 'T13.TW') displayName = '電子指數';
+          else if (sym === 'T17.TW') displayName = '金融指數';
+          else {
+            try {
+              const dictStock = await window.StockDB.getStockFromDictionary(sym);
+              if (dictStock && dictStock.name) {
+                displayName = dictStock.name;
+              }
+            } catch (e) {}
+          }
+
           results[sym] = {
-            symbol: sym,
-            name: (q.longName || q.shortName || '').trim(),
+            symbol: sym, // 保持原始的 Symbol
+            name: displayName,
             price: Number(price.toFixed(2)),
             change: Number(change.toFixed(2)),
             changePercent: Number(changePercent.toFixed(2)),
-            open: openP > 0 ? Number(openP.toFixed(2)) : '-',
-            prevClose: prevClose > 0 ? Number(prevClose.toFixed(2)) : '-',
-            high: highP > 0 ? Number(highP.toFixed(2)) : '-',
-            low: lowP > 0 ? Number(lowP.toFixed(2)) : '-',
-            volume: volume >= 0 ? Number(volume.toFixed(0)) : '-',
+            open: meta.regularMarketOpen ? Number(meta.regularMarketOpen.toFixed(2)) : '-',
+            prevClose: prevClose ? Number(prevClose.toFixed(2)) : '-',
+            high: meta.regularMarketDayHigh ? Number(meta.regularMarketDayHigh.toFixed(2)) : '-',
+            low: meta.regularMarketDayLow ? Number(meta.regularMarketDayLow.toFixed(2)) : '-',
+            volume: meta.regularMarketVolume ? Number((meta.regularMarketVolume / 1000).toFixed(0)) : '-',
             time: time,
-            bid: bid > 0 ? Number(bid.toFixed(2)) : '-',
-            ask: ask > 0 ? Number(ask.toFixed(2)) : '-',
-            source: 'Yahoo'
+            bid: '-',
+            ask: '-',
+            source: 'Yahoo-chart'
           };
-        });
+        }
       } catch (err) {
-        console.warn('[Yahoo 補救] 失敗，準備嘗試從本地快取中讀取備用資料:', err.message);
+        console.warn(`[Yahoo] 查詢 ${sym} (${yahooSym}) 失敗:`, err.message);
       }
-    }
+    });
 
-    // 3. 快取備份機制：
-    // 對於成功獲取到有效價格的股票，存入 localStorage 備份
-    // 對於最終失敗或被標記離線的股票，從 localStorage 備份中讀取
+    await Promise.all(fetchPromises);
+
+    // 快取備份與復原機制
     normalized.forEach(sym => {
       const q = results[sym];
       const cacheKey = `cached_quote_${sym}`;
       if (q && q.price > 0 && !q.offline && !q.error) {
-        // 存入快取
         localStorage.setItem(cacheKey, JSON.stringify(q));
       } else {
-        // 從快取讀取
         const cachedData = localStorage.getItem(cacheKey);
         if (cachedData) {
           try {
             const parsed = JSON.parse(cachedData);
-            parsed.offline = true; // 標記為離線快取資料
+            parsed.offline = true;
             results[sym] = parsed;
             console.log(`[快取備份] ${sym} 復原成功: 現價=${parsed.price}`);
           } catch (e) {
@@ -441,6 +443,7 @@
     fetchStockQuote: fetchSingleStockQuote,
     fetchBatchQuotes,
     searchStock,
-    initializeLocalStockDictionary
+    initializeLocalStockDictionary,
+    fetchWithProxyFallback
   };
 })(window);
