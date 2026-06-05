@@ -1054,12 +1054,19 @@ body {
   }
 
   .action-links-right {
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 12px;
-    border-top: 1px solid var(--border-color);
-    padding-top: 10px;
-    width: 100%;
+    flex-wrap: nowrap !important;
+    justify-content: center !important;
+    gap: 6px !important;
+    border-top: 1px solid var(--border-color) !important;
+    padding-top: 10px !important;
+    width: 100% !important;
+  }
+
+  .action-links-right button,
+  .action-links-right label {
+    font-size: 11px !important;
+    padding: 4px 6px !important;
+    white-space: nowrap !important;
   }
 
   .action-link-separator,
@@ -1980,12 +1987,19 @@ body.force-mobile .action-links-left {
 }
 
 body.force-mobile .action-links-right {
-  flex-wrap: wrap !important;
+  flex-wrap: nowrap !important;
   justify-content: center !important;
-  gap: 12px !important;
+  gap: 6px !important;
   border-top: 1px solid var(--border-color) !important;
   padding-top: 10px !important;
   width: 100% !important;
+}
+
+body.force-mobile .action-links-right button,
+body.force-mobile .action-links-right label {
+  font-size: 11px !important;
+  padding: 4px 6px !important;
+  white-space: nowrap !important;
 }
 
 body.force-mobile .action-link-separator,
@@ -2762,9 +2776,9 @@ body.force-mobile .action-links-left {
   width: 100% !important;
 }
 body.force-mobile .action-links-right {
-  flex-wrap: wrap !important;
+  flex-wrap: nowrap !important;
   justify-content: center !important;
-  gap: 12px !important;
+  gap: 6px !important;
   border-top: 1px solid var(--border-color) !important;
   padding-top: 10px !important;
   width: 100% !important;
@@ -2785,7 +2799,40 @@ body.force-mobile #broad-market-badge span {
   white-space: nowrap !important;
   flex: 0 0 auto !important;
 }
-  /* 已還原為可水平滑動的寬表格樣式，以防止欄位重疊 */
+/* ============================================================
+   還原自選股大表格下所有子欄位的 Grid/Flex 配置，防止欄位重疊與移位
+   ============================================================ */
+@media (max-width: 768px) {
+  .stock-table-header.view-summary > div:not(.col-batch-check),
+  .stock-table-header.view-holdings > div:not(.col-batch-check),
+  .stock-row-summary.view-summary > div:not(.col-batch-check),
+  .stock-row-summary.view-holdings > div:not(.col-batch-check) {
+    display: block !important;
+    grid-area: auto !important;
+    font-size: inherit !important;
+    padding-top: 0 !important;
+  }
+  
+  .stock-row-summary.view-summary .col-shares,
+  .stock-row-summary.view-holdings .col-shares {
+    color: inherit !important;
+  }
+}
+
+body.force-mobile .stock-table-header.view-summary > div:not(.col-batch-check),
+body.force-mobile .stock-table-header.view-holdings > div:not(.col-batch-check),
+body.force-mobile .stock-row-summary.view-summary > div:not(.col-batch-check),
+body.force-mobile .stock-row-summary.view-holdings > div:not(.col-batch-check) {
+  display: block !important;
+  grid-area: auto !important;
+  font-size: inherit !important;
+  padding-top: 0 !important;
+}
+
+body.force-mobile .stock-row-summary.view-summary .col-shares,
+body.force-mobile .stock-row-summary.view-holdings .col-shares {
+  color: inherit !important;
+}
 
 
 
