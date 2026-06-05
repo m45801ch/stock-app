@@ -969,6 +969,13 @@
     // 填充文字與內容
     document.getElementById('detail-stock-name').textContent = name;
     document.getElementById('detail-stock-symbol').textContent = symbol;
+
+    const etfBadge = document.getElementById('detail-stock-etf-badge');
+    if (etfBadge) {
+      const cleanSymbol = symbol.split('.')[0];
+      const isEtf = cleanSymbol.startsWith('00');
+      etfBadge.style.display = isEtf ? 'inline-block' : 'none';
+    }
     
     const priceValEl = document.getElementById('detail-price-val');
     const priceChangeEl = document.getElementById('detail-price-change');
