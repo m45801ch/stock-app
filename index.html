@@ -11,14 +11,18 @@
   <link rel="apple-touch-icon" href="./icons/icon-192.png">
   
   <!-- 樣式表 -->
-  <link rel="stylesheet" href="./css/index.css?v=20260605_5">
+  <link rel="stylesheet" href="./css/index.css?v=20260605_10">
 </head>
 <body>
 
   <!-- 頂部導覽列 -->
   <header class="app-header">
     <div class="logo-section">
-      <span class="logo-text" style="font-weight: 800; font-size: 22px; color: var(--primary-color);">我的自選股</span>
+      <span id="app-logo-title" class="logo-text" style="font-weight: 800; font-size: 22px; color: var(--primary-color); cursor: pointer;" title="點擊自訂標題名稱">我的自選股</span>
+      <input type="text" id="app-logo-input" class="logo-input" style="display: none; font-weight: 800; font-size: 22px; color: var(--primary-color); background: transparent; border: none; border-bottom: 2px solid var(--primary-color); outline: none; padding: 0 2px; width: 150px; font-family: inherit;" maxlength="20" placeholder="請輸入標題名稱">
+      <button id="btn-edit-title" class="btn-edit-title" title="點擊自訂標題名稱" aria-label="編輯標題">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+      </button>
     </div>
     
     <!-- 搜尋列 -->
@@ -654,14 +658,14 @@
     </div>
   </div>
 
-  <script src="./js/stock_data.js?v=20260605_1"></script>
-  <script src="./js/utils.js?v=20260605_1"></script>
-  <script src="./js/db.js?v=20260605_1"></script>
-  <script src="./js/api.js?v=20260605_1"></script>
-  <script src="./js/sync.js?v=20260605_1"></script>
-  <script src="./js/search.js?v=20260605_1"></script>
-  <script src="./js/transaction.js?v=20260605_1"></script>
-  <script src="./js/portfolio.js?v=20260605_1"></script>
-  <script src="./js/app.js?v=20260605_1"></script>
+  <script src="./js/stock_data.js?v=20260605_2"></script>
+  <script src="./js/utils.js?v=20260605_2"></script>
+  <script src="./js/db.js?v=20260605_2"></script>
+  <script src="./js/api.js?v=20260605_3"></script>
+  <script src="./js/sync.js?v=20260605_2"></script>
+  <script src="./js/search.js?v=20260605_2"></script>
+  <script src="./js/transaction.js?v=20260605_2"></script>
+  <script src="./js/portfolio.js?v=20260605_2"></script>
+  <script src="./js/app.js?v=20260605_3"></script>
 </body>
 </html>

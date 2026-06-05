@@ -70,6 +70,11 @@ body {
   font-size: 20px;
   font-weight: 700;
   color: var(--text-main);
+  transition: opacity 0.2s;
+}
+
+.logo-text:hover {
+  opacity: 0.8;
 }
 
 /* 搜尋區塊 */
@@ -1076,15 +1081,23 @@ body {
   }
 
   #broad-market-badge {
-    margin-left: 0 !important;
-    width: 100% !important;
-    display: flex !important;
+    margin: 0 auto !important;
+    width: auto !important;
+    max-width: 100% !important;
+    display: inline-flex !important;
     justify-content: center !important;
-    gap: 8px !important;
+    gap: 4px !important;
+    padding: 3px 12px !important;
+    font-size: 12px !important;
   }
   #broad-market-badge span {
     white-space: nowrap !important;
     flex: 0 0 auto !important;
+    font-size: 12px !important;
+  }
+  #broad-market-badge #bm-badge-time {
+    font-size: 10.5px !important;
+    margin-left: 2px !important;
   }
   
   /* 行動裝置上將表格轉為卡片視覺 */
@@ -2009,15 +2022,23 @@ body.force-mobile #bm-badge-sep {
 }
 
 body.force-mobile #broad-market-badge {
-  margin-left: 0 !important;
-  width: 100% !important;
-  display: flex !important;
+  margin: 0 auto !important;
+  width: auto !important;
+  max-width: 100% !important;
+  display: inline-flex !important;
   justify-content: center !important;
-  gap: 8px !important;
+  gap: 4px !important;
+  padding: 3px 12px !important;
+  font-size: 12px !important;
 }
 body.force-mobile #broad-market-badge span {
   white-space: nowrap !important;
   flex: 0 0 auto !important;
+  font-size: 12px !important;
+}
+body.force-mobile #broad-market-badge #bm-badge-time {
+  font-size: 10.5px !important;
+  margin-left: 2px !important;
 }
 
 body.force-mobile .sub-tabs-bar {
@@ -2384,20 +2405,20 @@ body.force-mobile .summary-pnl-item .summary-value {
   /* 持股明細分頁寬度與顯示設定 */
   .stock-table-header.view-holdings {
     display: grid !important;
-    grid-template-columns: 40px 1.6fr 1.5fr 1.2fr 1.5fr 1.5fr 1.5fr 1.8fr 1fr 50px !important;
-    min-width: 950px !important;
+    grid-template-columns: 40px 1.6fr 2fr 1.4fr 1.5fr 1.5fr 1.5fr 2.5fr 1.2fr 50px !important;
+    min-width: 1300px !important;
   }
   .stock-row-summary.view-holdings {
     display: grid !important;
-    grid-template-columns: 40px 1.6fr 1.5fr 1.2fr 1.5fr 1.5fr 1.5fr 1.8fr 1fr 50px !important;
+    grid-template-columns: 40px 1.6fr 2fr 1.4fr 1.5fr 1.5fr 1.5fr 2.5fr 1.2fr 50px !important;
     grid-template-areas: none !important;
     gap: 0 !important;
     padding: 8px 16px !important;
-    min-width: 950px !important;
+    min-width: 1300px !important;
   }
   .stock-table-header.view-holdings.batch-mode-active,
   .stock-row-summary.view-holdings.batch-mode-active {
-    grid-template-columns: 40px 30px 1.6fr 1.5fr 1.2fr 1.5fr 1.5fr 1.5fr 1.8fr 1fr 50px !important;
+    grid-template-columns: 40px 30px 1.6fr 2fr 1.4fr 1.5fr 1.5fr 1.5fr 2.5fr 1.2fr 50px !important;
   }
 
   /* 強制還原隱藏的欄位，呈現完整表格，並防範 grid-area 跑位 */
@@ -2483,20 +2504,20 @@ body.force-mobile .stock-row-summary.view-summary.batch-mode-active {
 
 body.force-mobile .stock-table-header.view-holdings {
   display: grid !important;
-  grid-template-columns: 40px 1.6fr 1.5fr 1.2fr 1.5fr 1.5fr 1.5fr 1.8fr 1fr 50px !important;
-  min-width: 950px !important;
+  grid-template-columns: 40px 1.6fr 2fr 1.4fr 1.5fr 1.5fr 1.5fr 2.5fr 1.2fr 50px !important;
+  min-width: 1300px !important;
 }
 body.force-mobile .stock-row-summary.view-holdings {
   display: grid !important;
-  grid-template-columns: 40px 1.6fr 1.5fr 1.2fr 1.5fr 1.5fr 1.5fr 1.8fr 1fr 50px !important;
+  grid-template-columns: 40px 1.6fr 2fr 1.4fr 1.5fr 1.5fr 1.5fr 2.5fr 1.2fr 50px !important;
   grid-template-areas: none !important;
   gap: 0 !important;
   padding: 8px 16px !important;
-  min-width: 950px !important;
+  min-width: 1300px !important;
 }
 body.force-mobile .stock-table-header.view-holdings.batch-mode-active,
 body.force-mobile .stock-row-summary.view-holdings.batch-mode-active {
-  grid-template-columns: 40px 30px 1.6fr 1.5fr 1.2fr 1.5fr 1.5fr 1.5fr 1.8fr 1fr 50px !important;
+  grid-template-columns: 40px 30px 1.6fr 2fr 1.4fr 1.5fr 1.5fr 1.5fr 2.5fr 1.2fr 50px !important;
 }
 
 body.force-mobile .stock-table-header > div,
@@ -2789,15 +2810,23 @@ body.force-mobile #bm-badge-sep {
   display: none !important;
 }
 body.force-mobile #broad-market-badge {
-  margin-left: 0 !important;
-  width: 100% !important;
-  display: flex !important;
+  margin: 0 auto !important;
+  width: auto !important;
+  max-width: 100% !important;
+  display: inline-flex !important;
   justify-content: center !important;
-  gap: 8px !important;
+  gap: 4px !important;
+  padding: 3px 12px !important;
+  font-size: 12px !important;
 }
 body.force-mobile #broad-market-badge span {
   white-space: nowrap !important;
   flex: 0 0 auto !important;
+  font-size: 12px !important;
+}
+body.force-mobile #broad-market-badge #bm-badge-time {
+  font-size: 10.5px !important;
+  margin-left: 2px !important;
 }
 /* ============================================================
    還原自選股大表格下所有子欄位的 Grid/Flex 配置，防止欄位重疊與移位
@@ -2832,7 +2861,166 @@ body.force-mobile .stock-row-summary.view-holdings > div:not(.col-batch-check) {
 body.force-mobile .stock-row-summary.view-summary .col-shares,
 body.force-mobile .stock-row-summary.view-holdings .col-shares {
   color: inherit !important;
+}/* ============================================================
+   手機版與強制手機版下的頂部 Header 控制區與群組 Tab 排版優化
+   ============================================================ */
+@media (max-width: 768px) {
+  /* 1. 右側控制區防折行與自適應換列 */
+  .header-actions {
+    width: 100% !important;
+    justify-content: center !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+  #db-status-badge,
+  #btn-settings {
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+  }
+  #btn-settings {
+    padding: 6px 12px !important;
+    font-size: 12px !important;
+  }
+
+  /* 2. 群組 Tab 區改為垂直分行且支持水平滑動，群組名絕不折行 */
+  .group-tabs-container {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+    padding: 8px 12px 8px 12px !important;
+  }
+  .tabs-wrapper {
+    display: flex !important;
+    overflow-x: auto !important;
+    width: 100% !important;
+    scrollbar-width: none !important;
+    gap: 6px !important;
+  }
+  .tabs-wrapper::-webkit-scrollbar {
+    display: none !important;
+  }
+  .group-tab {
+    white-space: nowrap !important;
+    flex: 0 0 auto !important;
+    padding: 8px 12px !important;
+    font-size: 13px !important;
+  }
+  .group-management-btns {
+    display: flex !important;
+    justify-content: flex-end !important;
+    padding-bottom: 4px !important;
+    margin-top: 2px !important;
+    width: 100% !important;
+  }
+  .group-management-btns button {
+    white-space: nowrap !important;
+    font-size: 12px !important;
+  }
 }
 
+body.force-mobile .header-actions {
+  width: 100% !important;
+  justify-content: center !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+}
+body.force-mobile #db-status-badge,
+body.force-mobile #btn-settings {
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+}
+body.force-mobile #btn-settings {
+  padding: 6px 12px !important;
+  font-size: 12px !important;
+}
 
+body.force-mobile .group-tabs-container {
+  flex-direction: column !important;
+  align-items: stretch !important;
+  gap: 8px !important;
+  padding: 8px 12px 8px 12px !important;
+}
+body.force-mobile .tabs-wrapper {
+  display: flex !important;
+  overflow-x: auto !important;
+  width: 100% !important;
+  scrollbar-width: none !important;
+  gap: 6px !important;
+}
+body.force-mobile .tabs-wrapper::-webkit-scrollbar {
+  display: none !important;
+}
+body.force-mobile .group-tab {
+  white-space: nowrap !important;
+  flex: 0 0 auto !important;
+  padding: 8px 12px !important;
+  font-size: 13px !important;
+}
+body.force-mobile .group-management-btns {
+  display: flex !important;
+  justify-content: flex-end !important;
+  padding-bottom: 4px !important;
+  margin-top: 2px !important;
+  width: 100% !important;
+}
+body.force-mobile .group-management-btns button {
+  white-space: nowrap !important;
+  font-size: 12px !important;
+}
 
+/* 自訂標題樣式 */
+.logo-section {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-edit-title {
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  color: var(--text-muted, #888);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s, color 0.2s;
+  border-radius: 4px;
+}
+
+.btn-edit-title:hover {
+  color: var(--primary-color) !important;
+  background-color: rgba(243, 156, 18, 0.1);
+}
+
+.logo-section:hover .btn-edit-title {
+  opacity: 1;
+}
+
+.logo-input {
+  font-weight: 800;
+  font-size: 22px;
+  color: var(--primary-color);
+  background: rgba(243, 156, 18, 0.05);
+  border: none;
+  border-bottom: 2px solid var(--primary-color);
+  outline: none;
+  padding: 0 4px;
+  border-radius: 4px 4px 0 0;
+  font-family: inherit;
+  box-sizing: border-box;
+  transition: background-color 0.2s;
+}
+
+.logo-input:focus {
+  background: rgba(243, 156, 18, 0.1);
+}
+
+/* 行動裝置上無 hover，故將編輯按鈕透明度設為 0.6，點擊更友善 */
+@media (max-width: 768px) {
+  .btn-edit-title {
+    opacity: 0.6;
+  }
+}

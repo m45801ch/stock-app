@@ -86,7 +86,101 @@
     initAutoRefresh();
     initLayoutToggle();
     initPwaInstallPrompt();
+    initAppLogoTitle();
   });
+
+  // 初始化自訂標題 (點擊自訂名稱)
+  function initAppLogoTitle() {
+    const titleEl = document.getElementById('app-logo-title');
+    const inputEl = document.getElementById('app-logo-input');
+    const editBtn = document.getElementById('btn-edit-title');
+    if (!titleEl || !inputEl) return;
+
+    // 載入儲存的標題
+    const savedTitle = localStorage.getItem('app_logo_title');
+    if (savedTitle && savedTitle.trim() !== '') {
+      titleEl.textContent = savedTitle.trim();
+    }
+
+    // 進入編輯狀態
+    function startEdit() {
+      inputEl.value = titleEl.textContent;
+      titleEl.style.display = 'none';
+      if (editBtn) editBtn.style.display = 'none';
+      inputEl.style.display = 'inline-block';
+      
+      // 計算輸入框寬度以符合內容長度，給予最佳視覺感
+      adjustInputWidth();
+      inputEl.focus();
+      inputEl.select();
+    }
+
+    // 結束編輯狀態並儲存
+    function finishEdit() {
+      if (inputEl.style.display === 'none') return;
+      
+      const newTitle = inputEl.value.trim();
+      if (newTitle === '') {
+        // 輸入空白則還原為預設
+        localStorage.removeItem('app_logo_title');
+        titleEl.textContent = '我的自選股';
+      } else {
+        localStorage.setItem('app_logo_title', newTitle);
+        titleEl.textContent = newTitle;
+      }
+      
+      inputEl.style.display = 'none';
+      titleEl.style.display = 'inline-block';
+      if (editBtn) editBtn.style.display = 'inline-flex';
+    }
+
+    // 取消編輯
+    function cancelEdit() {
+      inputEl.style.display = 'none';
+      titleEl.style.display = 'inline-block';
+      if (editBtn) editBtn.style.display = 'inline-flex';
+    }
+
+    // 動態調整輸入框寬度
+    function adjustInputWidth() {
+      // 依字數動態調整 input 的寬度，最少 100px
+      const textLen = inputEl.value.length;
+      // 粗略計算：中文字大約 22px，英文字母大約 12px
+      let width = 0;
+      for (let i = 0; i < textLen; i++) {
+        const charCode = inputEl.value.charCodeAt(i);
+        if (charCode >= 0 && charCode <= 128) {
+          width += 14;
+        } else {
+          width += 24;
+        }
+      }
+      inputEl.style.width = Math.max(100, width + 15) + 'px';
+    }
+
+    // 事件監聽
+    titleEl.addEventListener('click', startEdit);
+    if (editBtn) {
+      editBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        startEdit();
+      });
+    }
+
+    inputEl.addEventListener('input', adjustInputWidth);
+
+    inputEl.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        finishEdit();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        cancelEdit();
+      }
+    });
+
+    inputEl.addEventListener('blur', finishEdit);
+  }
 
   // 註冊 PWA Service Worker
   function registerServiceWorker() {
