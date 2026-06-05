@@ -3026,3 +3026,101 @@ body.force-mobile .group-management-btns button {
     opacity: 0.6;
   }
 }
+
+/* 配息切換模式按鈕與排版 */
+.sub-tabs-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.sub-tabs-left {
+  display: flex;
+  gap: 8px;
+}
+.sub-tabs-right {
+  display: flex;
+  align-items: center;
+}
+.btn-dividend-toggle {
+  padding: 6px 14px;
+  background: var(--card-bg, #fff);
+  border: 1px solid var(--border-color, #dee2e6);
+  color: var(--text-main, #333);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 20px; /* 藥丸形狀按鈕 */
+  transition: all 0.2s;
+  box-shadow: var(--shadow-sm);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.btn-dividend-toggle:hover {
+  background: var(--hover-bg, #f8f9fa);
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+}
+.btn-dividend-toggle.active {
+  background: var(--primary-color);
+  color: #fff;
+  border-color: var(--primary-color);
+  box-shadow: 0 2px 6px rgba(243, 156, 18, 0.3);
+}
+
+/* 行動裝置或強制手機版適配 */
+@media (max-width: 768px) {
+  .sub-tabs-bar {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+  }
+  .sub-tabs-left {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+    width: 100% !important;
+  }
+  .sub-tabs-left .sub-tab {
+    margin-right: 0 !important;
+    flex: 1 1 auto !important;
+    text-align: center !important;
+  }
+  .sub-tabs-right {
+    width: 100% !important;
+    display: flex !important;
+  }
+  .btn-dividend-toggle {
+    width: 100% !important;
+    justify-content: center !important;
+    padding: 8px 12px !important;
+    font-size: 12px !important;
+  }
+}
+
+body.force-mobile .sub-tabs-bar {
+  flex-direction: column !important;
+  align-items: stretch !important;
+  gap: 8px !important;
+}
+body.force-mobile .sub-tabs-left {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 6px !important;
+  width: 100% !important;
+}
+body.force-mobile .sub-tabs-left .sub-tab {
+  margin-right: 0 !important;
+  flex: 1 1 auto !important;
+  text-align: center !important;
+}
+body.force-mobile .sub-tabs-right {
+  width: 100% !important;
+  display: flex !important;
+}
+body.force-mobile .btn-dividend-toggle {
+  width: 100% !important;
+  justify-content: center !important;
+  padding: 8px 12px !important;
+  font-size: 12px !important;
+}

@@ -39,16 +39,21 @@
       let totalRealizedPnL = 0;
       let totalUnrealizedPnL = 0;
 
-      // ── 並行取得所有股票的交易紀錄 + 字典名稱 ──
-      const [allTxsList, allDictStocks] = await Promise.all([
+      // 讀取 localStorage 儲存的配息模式狀態 (預設為 include 含配息)
+      const includeDividends = localStorage.getItem('dividend_mode') !== 'exclude';
+
+      // ── 並行取得所有股票的交易紀錄 + 字典名稱 + 歷年配息 ──
+      const [allTxsList, allDictStocks, allDividends] = await Promise.all([
         Promise.all(stocks.map(s => window.StockDB.getTransactionsByStock(groupId, s.symbol))),
-        Promise.all(stocks.map(s => window.StockDB.getStockFromDictionary(s.symbol)))
+        Promise.all(stocks.map(s => window.StockDB.getStockFromDictionary(s.symbol))),
+        Promise.all(stocks.map(s => window.StockAPI.getStockDividendsWithCache(s.symbol)))
       ]);
 
       for (let i = 0; i < stocks.length; i++) {
         const stock = stocks[i];
         const txs = allTxsList[i];
         const dictStock = allDictStocks[i];
+        const dividends = allDividends[i] || [];
 
         let lookupKey = stock.symbol.toUpperCase();
         if (!lookupKey.includes('.')) {
@@ -56,7 +61,7 @@
         }
         let quote = quotes[lookupKey];
         if (!quote || quote.price === 0) {
-          const tempCalc = window.StockUtils.calculatePortfolio(txs, 0);
+          const tempCalc = window.StockUtils.calculatePortfolio(txs, 0, dividends, includeDividends);
           quote = {
             symbol: stock.symbol,
             price: tempCalc.averageCost,
@@ -74,7 +79,7 @@
           };
         }
 
-        const calc = window.StockUtils.calculatePortfolio(txs, quote.price);
+        const calc = window.StockUtils.calculatePortfolio(txs, quote.price, dividends, includeDividends);
 
         // 中文名稱自動導正機制
         let displayName = stock.name;

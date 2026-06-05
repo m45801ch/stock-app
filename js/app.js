@@ -87,7 +87,39 @@
     initLayoutToggle();
     initPwaInstallPrompt();
     initAppLogoTitle();
+    initDividendToggle();
   });
+
+  // 初始化配息折抵計算模式切換
+  function initDividendToggle() {
+    const divToggle = document.getElementById('btn-dividend-toggle');
+    if (!divToggle) return;
+
+    // 初始化按鈕文字與高亮狀態
+    const currentMode = localStorage.getItem('dividend_mode') || 'include';
+    updateToggleUI(currentMode);
+
+    divToggle.addEventListener('click', async () => {
+      const isInclude = localStorage.getItem('dividend_mode') !== 'exclude';
+      const nextMode = isInclude ? 'exclude' : 'include';
+      localStorage.setItem('dividend_mode', nextMode);
+      
+      updateToggleUI(nextMode);
+
+      // 重新渲染以更新損益數值
+      await refreshPortfolio();
+    });
+
+    function updateToggleUI(mode) {
+      if (mode === 'include') {
+        divToggle.textContent = '損益計算：含配息';
+        divToggle.classList.add('active');
+      } else {
+        divToggle.textContent = '損益計算：不含配息';
+        divToggle.classList.remove('active');
+      }
+    }
+  }
 
   // 初始化自訂標題 (點擊自訂名稱)
   function initAppLogoTitle() {

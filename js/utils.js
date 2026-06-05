@@ -30,8 +30,8 @@
   /**
    * 先進先出 (FIFO) 持倉與損益計算邏輯
    */
-  function calculatePortfolio(transactions, currentPrice = 0) {
-    let activeBuyBatches = []; // 存儲尚未被賣出抵消的買入批次 { price, shares, date }
+  function calculatePortfolio(transactions, currentPrice = 0, dividends = [], includeDividends = true) {
+    let activeBuyBatches = []; // 存儲尚未被賣出抵消的買入批次 { originalPrice, shares, date }
     let realizedPnL = 0; // 已實現損益
 
     // 排序確保時間先後順序
@@ -43,7 +43,7 @@
 
       if (tx.type === 'buy') {
         activeBuyBatches.push({
-          price: price,
+          originalPrice: price, // 保留原始買入價
           shares: shares,
           date: tx.date
         });
@@ -53,14 +53,21 @@
         while (remainingSellShares > 0 && activeBuyBatches.length > 0) {
           const firstBatch = activeBuyBatches[0];
 
+          // 獲取該買入批次在持有期間（buyDate 到 sellDate）內的所有配息
+          const totalDivAmount = includeDividends ? dividends
+            .filter(d => d.date >= firstBatch.date && d.date <= tx.date)
+            .reduce((sum, d) => sum + d.amount, 0) : 0;
+          
+          const adjustedBuyPrice = firstBatch.originalPrice - totalDivAmount;
+
           if (firstBatch.shares <= remainingSellShares) {
-            const profitPerShare = price - firstBatch.price;
+            const profitPerShare = price - adjustedBuyPrice;
             realizedPnL += profitPerShare * firstBatch.shares;
 
             remainingSellShares -= firstBatch.shares;
             activeBuyBatches.shift();
           } else {
-            const profitPerShare = price - firstBatch.price;
+            const profitPerShare = price - adjustedBuyPrice;
             realizedPnL += profitPerShare * remainingSellShares;
 
             firstBatch.shares -= remainingSellShares;
@@ -71,7 +78,16 @@
     }
 
     const totalShares = activeBuyBatches.reduce((sum, batch) => sum + batch.shares, 0);
-    const totalCost = activeBuyBatches.reduce((sum, batch) => sum + (batch.shares * batch.price), 0);
+
+    // 對於未實現持股，扣減其買入日期至今的配息
+    const getAdjustedPrice = (batch) => {
+      const totalDivAmount = includeDividends ? dividends
+        .filter(d => d.date >= batch.date)
+        .reduce((sum, d) => sum + d.amount, 0) : 0;
+      return batch.originalPrice - totalDivAmount;
+    };
+
+    const totalCost = activeBuyBatches.reduce((sum, batch) => sum + (batch.shares * getAdjustedPrice(batch)), 0);
     const averageCost = totalShares > 0 ? (totalCost / totalShares) : 0;
 
     const marketValue = totalShares * currentPrice;

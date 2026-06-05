@@ -480,12 +480,93 @@
     }
   }
 
+  // ============================================================
+  // 獲取歷史配息與快取支援 (包含跨域 Fallback，快取 7 天)
+  // ============================================================
+  async function fetchStockDividends(symbol) {
+    let sym = symbol.toUpperCase().trim();
+    if (!sym.includes('.')) sym = `${sym}.TW`;
+
+    const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${sym}?interval=1d&range=10y&events=div&_=${Date.now()}`;
+    console.log(`[API] 查詢配息歷史: ${sym}`);
+    try {
+      const data = await fetchWithProxyFallback(targetUrl, (json) => json && json.chart && Array.isArray(json.chart.result));
+      const result = data.chart?.result?.[0];
+      const dividends = [];
+      if (result && result.events && result.events.dividends) {
+        const divObj = result.events.dividends;
+        Object.keys(divObj).forEach(key => {
+          const item = divObj[key];
+          if (item && item.amount !== undefined) {
+            const divDate = new Date(item.date * 1000);
+            const dateStr = divDate.toISOString().split('T')[0]; // YYYY-MM-DD
+            dividends.push({
+              date: dateStr,
+              amount: Number(item.amount) || 0
+            });
+          }
+        });
+      }
+      // 按日期升序排列
+      dividends.sort((a, b) => new Date(a.date) - new Date(b.date));
+      console.log(`[API] ${sym} 獲取到 ${dividends.length} 筆配息紀錄`);
+      return dividends;
+    } catch (e) {
+      console.warn(`[API] 獲取 ${sym} 歷史配息失敗:`, e.message);
+      return [];
+    }
+  }
+
+  async function getStockDividendsWithCache(symbol) {
+    let sym = symbol.toUpperCase().trim();
+    if (!sym.includes('.')) sym = `${sym}.TW`;
+
+    // 大盤與指數等，直接回傳空陣列
+    const indexSymbols = ['T00.TW', 'O00.TWO', 'T13.TW', 'T17.TW'];
+    if (indexSymbols.includes(sym)) {
+      return [];
+    }
+
+    const cacheKey = `cached_dividends_${sym}`;
+    const cached = localStorage.getItem(cacheKey);
+    if (cached) {
+      try {
+        const { data, timestamp } = JSON.parse(cached);
+        // 7 天有效期 (7 * 24 * 60 * 60 * 1000)
+        if (Date.now() - timestamp < 7 * 24 * 60 * 60 * 1000) {
+          return data;
+        }
+      } catch (e) {
+        console.warn(`[API] 解析配息快取失敗 ${sym}`, e);
+      }
+    }
+
+    try {
+      const data = await fetchStockDividends(sym);
+      localStorage.setItem(cacheKey, JSON.stringify({
+        data,
+        timestamp: Date.now()
+      }));
+      return data;
+    } catch (err) {
+      console.error(`[API] 獲取配息失敗 ${sym}`, err);
+      // 失敗時若有過期快取則備用
+      if (cached) {
+        try {
+          return JSON.parse(cached).data;
+        } catch (e) {}
+      }
+      return [];
+    }
+  }
+
   window.StockAPI = {
     fetchJSONP,
     fetchStockQuote: fetchSingleStockQuote,
     fetchBatchQuotes,
     searchStock,
     initializeLocalStockDictionary,
-    fetchWithProxyFallback
+    fetchWithProxyFallback,
+    getStockDividendsWithCache
   };
 })(window);
