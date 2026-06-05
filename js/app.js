@@ -876,7 +876,14 @@
       priceChangeEl.className = `detail-price-change ${priceColorClass}`;
     }
     if (updateTimeEl) {
-      updateTimeEl.textContent = `收盤 | ${quote.time || '14:30'} 更新`;
+      const now = new Date();
+      const day = now.getDay();
+      const hours = now.getHours();
+      const minutes = now.getMinutes();
+      const timeVal = hours * 100 + minutes;
+      const isMarketHours = (day >= 1 && day <= 5) && (timeVal >= 900 && timeVal <= 1335);
+      const label = isMarketHours ? '即時' : '收盤';
+      updateTimeEl.textContent = `${label} | ${quote.time || '13:30'} 更新`;
     }
     if (statVolEl) {
       statVolEl.textContent = quote.volume !== '-' ? window.StockUtils.formatNumber(quote.volume, 0) + ' 張' : '-';
@@ -909,7 +916,8 @@
 
     // 標題走勢圖文字
     document.getElementById('detail-chart-title').textContent = `${name}即時行情`;
-    document.getElementById('detail-chart-subtitle').textContent = `下午14:30  價 ${quote.price > 0 ? window.StockUtils.formatNumber(quote.price, 2) : '-'}  量(張) ${quote.volume !== '-' ? window.StockUtils.formatNumber(quote.volume, 0) : '-'}`;
+    const timeText = quote.time ? (parseInt(quote.time.split(':')[0]) >= 12 ? `下午 ${quote.time}` : `上午 ${quote.time}`) : '';
+    document.getElementById('detail-chart-subtitle').textContent = `${timeText} 價 ${quote.price > 0 ? window.StockUtils.formatNumber(quote.price, 2) : '-'} 量(張) ${quote.volume !== '-' ? window.StockUtils.formatNumber(quote.volume, 0) : '-'}`;
 
     // 繪製走勢圖
     drawStockDetailTrend(quote.change > 0);
@@ -1331,7 +1339,7 @@
         const isUp = change > 0;
         const colorClass = isUp ? 'stock-up' : (change < 0 ? 'stock-down' : 'stock-flat');
         const symbol = isUp ? '▲' : (change < 0 ? '▼' : '');
-        const timeStr = q.time && q.time !== '-' ? q.time : new Date().toLocaleTimeString('zh-TW', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        const timeStr = new Date().toLocaleTimeString('zh-TW', { hour12: false, hour: '2-digit', minute: '2-digit' });
 
         // 更新 idxData
         idxData[key].val = window.StockUtils.formatNumber(price, 2);
@@ -1360,7 +1368,8 @@
         const isUp = change > 0;
         const colorClass = isUp ? 'stock-up' : (change < 0 ? 'stock-down' : 'stock-flat');
         const symbol = isUp ? '▲' : (change < 0 ? '▼' : '');
-        const timeStr = idxData['idx-tse'].time;
+        const now = new Date();
+        const localTimeStr = now.toLocaleTimeString('zh-TW', { hour12: false, hour: '2-digit', minute: '2-digit' });
 
         valEl.textContent = idxData['idx-tse'].val;
         valEl.className = colorClass;
@@ -1369,7 +1378,7 @@
         changeEl.className = colorClass;
 
         if (badgeTimeEl) {
-          badgeTimeEl.textContent = `（更新時間： ${timeStr}）`;
+          badgeTimeEl.textContent = `（更新時間： ${localTimeStr}）`;
         }
       }
 
@@ -1394,7 +1403,9 @@
           bigChange.className = `market-large-change ${colorClass}`;
 
           if (activeTimeEl) {
-            activeTimeEl.textContent = d.time ? `（更新時間： ${d.time}）` : '（更新時間： -）';
+            const now = new Date();
+            const localTimeStr = now.toLocaleTimeString('zh-TW', { hour12: false, hour: '2-digit', minute: '2-digit' });
+            activeTimeEl.textContent = `（更新時間： ${localTimeStr}）`;
           }
 
           const marketOpenVal = document.getElementById('market-open-val');

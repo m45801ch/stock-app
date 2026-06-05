@@ -231,11 +231,8 @@
           const change = price - prevClose;
           const changePercent = prevClose ? (change / prevClose) * 100 : 0;
           
-          let time = '-';
-          if (meta.regularMarketTime) {
-            const dateObj = new Date(meta.regularMarketTime * 1000);
-            time = dateObj.toLocaleTimeString('zh-TW', { hour12: false, hour: '2-digit', minute: '2-digit' });
-          }
+          const now = new Date();
+          const time = now.toLocaleTimeString('zh-TW', { hour12: false, hour: '2-digit', minute: '2-digit' });
 
           // 獲取本地字典名稱，填補中文名稱 (若有)
           let displayName = '';
@@ -347,7 +344,7 @@
           high: meta.regularMarketDayHigh ? Number(meta.regularMarketDayHigh.toFixed(2)) : '-',
           low: meta.regularMarketDayLow ? Number(meta.regularMarketDayLow.toFixed(2)) : '-',
           volume: meta.regularMarketVolume ? Number((meta.regularMarketVolume / 1000).toFixed(0)) : '-',
-          time: meta.regularMarketTime ? new Date(meta.regularMarketTime * 1000).toLocaleTimeString('zh-TW', { hour12: false, hour: '2-digit', minute: '2-digit' }) : '-',
+          time: new Date().toLocaleTimeString('zh-TW', { hour12: false, hour: '2-digit', minute: '2-digit' }),
           source: 'Yahoo-chart'
         };
         localStorage.setItem(`cached_quote_${sym}`, JSON.stringify(quote));

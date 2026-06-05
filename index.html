@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="./icons/icon-192.png">
   
   <!-- 樣式表 -->
-  <link rel="stylesheet" href="./css/index.css?v=20260604_6">
+  <link rel="stylesheet" href="./css/index.css?v=20260605_3">
 </head>
 <body>
 
@@ -110,11 +110,11 @@
           <button id="btn-cancel-delete-stocks" class="btn-secondary" style="padding: 2px 10px; font-size: 12px; border-radius: 4px;">取消</button>
         </span>
         <span class="action-link-separator" id="batch-stocks-sep">|</span>
-        <div id="broad-market-badge" style="display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; background: #f1f3f5; padding: 3px 10px; border-radius: 12px; margin-left: 4px;">
-          <span style="color: var(--text-sub); font-weight: 500;">大盤:</span>
-          <span id="bm-badge-val" class="stock-down">45,677.46</span>
-          <span id="bm-badge-change" class="stock-down">▼ 781.70 (1.68%)</span>
-          <span id="bm-badge-time" style="font-size: 11px; color: var(--text-sub); font-weight: normal; margin-left: 4px;"></span>
+        <div id="broad-market-badge" style="display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; background: #f1f3f5; padding: 3px 10px; border-radius: 12px; margin-left: 4px; white-space: nowrap; flex-wrap: nowrap;">
+          <span style="color: var(--text-sub); font-weight: 500; white-space: nowrap;">大盤:</span>
+          <span id="bm-badge-val" class="stock-down" style="white-space: nowrap;">45,677.46</span>
+          <span id="bm-badge-change" class="stock-down" style="white-space: nowrap;">▼ 781.70 (1.68%)</span>
+          <span id="bm-badge-time" style="font-size: 11px; color: var(--text-sub); font-weight: normal; margin-left: 4px; white-space: nowrap;"></span>
         </div>
         <span class="action-link-separator" id="bm-badge-sep">|</span>
         <button id="link-rename-group" class="action-link-btn" style="display: none;">編輯此群組</button>
@@ -654,15 +654,14 @@
     </div>
   </div>
 
-  <!-- 主程式與各模組 (加上版本號以強制避免瀏覽器快取舊代碼) -->
-  <script src="./js/stock_data.js?v=20260604_4"></script>
-  <script src="./js/utils.js?v=20260604_4"></script>
-  <script src="./js/db.js?v=20260604_4"></script>
-  <script src="./js/api.js?v=20260604_4"></script>
-  <script src="./js/sync.js?v=20260604_4"></script>
-  <script src="./js/search.js?v=20260604_4"></script>
-  <script src="./js/transaction.js?v=20260604_4"></script>
-  <script src="./js/portfolio.js?v=20260604_4"></script>
-  <script src="./js/app.js?v=20260604_4"></script>
+  <script src="./js/stock_data.js?v=20260605_1"></script>
+  <script src="./js/utils.js?v=20260605_1"></script>
+  <script src="./js/db.js?v=20260605_1"></script>
+  <script src="./js/api.js?v=20260605_1"></script>
+  <script src="./js/sync.js?v=20260605_1"></script>
+  <script src="./js/search.js?v=20260605_1"></script>
+  <script src="./js/transaction.js?v=20260605_1"></script>
+  <script src="./js/portfolio.js?v=20260605_1"></script>
+  <script src="./js/app.js?v=20260605_1"></script>
 </body>
 </html>
