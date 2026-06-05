@@ -114,6 +114,7 @@
           <span style="color: var(--text-sub); font-weight: 500;">大盤:</span>
           <span id="bm-badge-val" class="stock-down">45,677.46</span>
           <span id="bm-badge-change" class="stock-down">▼ 781.70 (1.68%)</span>
+          <span id="bm-badge-time" style="font-size: 11px; color: var(--text-sub); font-weight: normal; margin-left: 4px;"></span>
         </div>
         <span class="action-link-separator" id="bm-badge-sep">|</span>
         <button id="link-rename-group" class="action-link-btn" style="display: none;">編輯此群組</button>
@@ -221,7 +222,10 @@
 
         <!-- 右側詳細圖表與大字數據 -->
         <div class="market-main-chart">
-          <div id="market-active-title" style="font-size: 18px; font-weight: 700; color: var(--text-main); margin-bottom: 12px; text-align: left;">加權指數</div>
+          <div style="display: flex; align-items: baseline; margin-bottom: 12px; gap: 8px;">
+            <div id="market-active-title" style="font-size: 18px; font-weight: 700; color: var(--text-main); text-align: left; margin-bottom: 0;">加權指數</div>
+            <span id="market-active-time" style="font-size: 12px; color: var(--text-sub); font-weight: normal;"></span>
+          </div>
           <div class="market-detail-header">
             <div class="market-large-data">
               <span class="market-large-val stock-down" id="market-big-val">45,677.46</span>

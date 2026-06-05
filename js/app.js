@@ -11,7 +11,8 @@
       open: '46,364.07',
       high: '46,364.07',
       low: '45,677.46',
-      prev: '46,459.16'
+      prev: '46,459.16',
+      time: '-'
     },
     'idx-otc': {
       name: '櫃買指數',
@@ -22,7 +23,8 @@
       open: '446.82',
       high: '447.10',
       low: '439.85',
-      prev: '446.82'
+      prev: '446.82',
+      time: '-'
     },
     'idx-elec': {
       name: '電子指數',
@@ -33,7 +35,8 @@
       open: '3,027.25',
       high: '3,027.25',
       low: '2,955.30',
-      prev: '3,027.25'
+      prev: '3,027.25',
+      time: '-'
     },
     'idx-fin': {
       name: '金融指數',
@@ -44,7 +47,8 @@
       open: '2,881.65',
       high: '2,912.44',
       low: '2,875.20',
-      prev: '2,881.65'
+      prev: '2,881.65',
+      time: '-'
     }
   };
 
@@ -411,7 +415,11 @@
         const d = idxData[card.id];
         if (d && marketBigVal && marketBigChange && marketBigVolText) {
           const activeTitleEl = document.getElementById('market-active-title');
+          const activeTimeEl = document.getElementById('market-active-time');
           if (activeTitleEl) activeTitleEl.textContent = d.name;
+          if (activeTimeEl) {
+            activeTimeEl.textContent = d.time && d.time !== '-' ? `（更新時間： ${d.time}）` : '（更新時間： -）';
+          }
 
           marketBigVal.textContent = d.val;
           marketBigVal.className = `market-large-val ${d.isUp ? 'stock-up' : 'stock-down'}`;
@@ -1337,117 +1345,108 @@
   async function updateBroadMarketBadge() {
     const valEl = document.getElementById('bm-badge-val');
     const changeEl = document.getElementById('bm-badge-change');
+    const badgeTimeEl = document.getElementById('bm-badge-time');
     if (!valEl || !changeEl) return;
 
     try {
-      if (!window.StockAPI || typeof window.StockAPI.fetchJSONP !== 'function') {
+      if (!window.StockAPI || typeof window.StockAPI.fetchBatchQuotes !== 'function') {
         throw new Error('API 工具尚未載入');
       }
 
-      // 1. 直連抓取加權指數 (^TWII)
-      const twiiUrl = `https://query1.finance.yahoo.com/v8/finance/chart/%5ETWII?interval=1d&range=1d&_=${Date.now()}`;
-      let twiiData;
-      try {
-        twiiData = await window.StockAPI.fetchJSONP(twiiUrl, 4000);
-      } catch (e) {
-        console.warn('[BroadMarket] 嘗試 JSONP 抓取加權指數失敗，改用代理：', e.message);
-        twiiData = await fetchWithProxyFallback(twiiUrl);
-      }
-      const twiiMeta = twiiData?.chart?.result?.[0]?.meta;
+      const quotes = await window.StockAPI.fetchBatchQuotes(['t00.TW', 'o00.TWO', 't13.TW', 't17.TW']);
+      
+      const mapping = {
+        'idx-tse': quotes['T00.TW'],
+        'idx-otc': quotes['O00.TWO'],
+        'idx-elec': quotes['T13.TW'],
+        'idx-fin': quotes['T17.TW']
+      };
 
-      // 2. 直連抓取櫃買指數 (^TWOII)
-      const twoiiUrl = `https://query1.finance.yahoo.com/v8/finance/chart/%5ETWOII?interval=1d&range=1d&_=${Date.now()}`;
-      let twoiiData;
-      try {
-        twoiiData = await window.StockAPI.fetchJSONP(twoiiUrl, 4000);
-      } catch (e) {
-        console.warn('[BroadMarket] 嘗試 JSONP 抓取櫃買指數失敗，改用代理：', e.message);
-        twoiiData = await fetchWithProxyFallback(twoiiUrl);
-      }
-      const twoiiMeta = twoiiData?.chart?.result?.[0]?.meta;
+      for (const [key, q] of Object.entries(mapping)) {
+        if (!q || q.price <= 0 || q.error) continue;
 
-      if (twiiMeta) {
-        const price = twiiMeta.regularMarketPrice || twiiMeta.chartPreviousClose || 0;
-        const prevClose = twiiMeta.previousClose || twiiMeta.chartPreviousClose || price;
-        const change = price - prevClose;
-        const changePct = prevClose > 0 ? (change / prevClose) * 100 : 0;
-        
+        const price = q.price;
+        const prevClose = q.prevClose !== '-' ? q.prevClose : price;
+        const change = q.change;
+        const changePct = q.changePercent;
         const isUp = change > 0;
         const colorClass = isUp ? 'stock-up' : (change < 0 ? 'stock-down' : 'stock-flat');
         const symbol = isUp ? '▲' : (change < 0 ? '▼' : '');
+        const timeStr = q.time && q.time !== '-' ? q.time : new Date().toLocaleTimeString('zh-TW', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
-        valEl.textContent = window.StockUtils.formatNumber(price, 2);
-        valEl.className = colorClass;
-
-        changeEl.textContent = `${symbol} ${window.StockUtils.formatNumber(Math.abs(change), 2)} (${window.StockUtils.formatPercent(changePct)})`;
-        changeEl.className = colorClass;
-
-        // 同步更新全域變數 idxData 供點選時調用最新資料
-        idxData['idx-tse'].val = window.StockUtils.formatNumber(price, 2);
-        idxData['idx-tse'].change = `${symbol} ${window.StockUtils.formatNumber(Math.abs(change), 2)} (${window.StockUtils.formatPercent(changePct)})`;
-        idxData['idx-tse'].isUp = isUp;
-        if (twiiMeta.regularMarketDayHigh) idxData['idx-tse'].high = window.StockUtils.formatNumber(twiiMeta.regularMarketDayHigh, 2);
-        if (twiiMeta.regularMarketDayLow) idxData['idx-tse'].low = window.StockUtils.formatNumber(twiiMeta.regularMarketDayLow, 2);
+        // 更新 idxData
+        idxData[key].val = window.StockUtils.formatNumber(price, 2);
+        idxData[key].change = `${symbol} ${window.StockUtils.formatNumber(Math.abs(change), 2)} (${window.StockUtils.formatPercent(changePct)})`;
+        idxData[key].isUp = isUp;
+        idxData[key].time = timeStr;
+        if (q.high && q.high !== '-') idxData[key].high = window.StockUtils.formatNumber(q.high, 2);
+        if (q.low && q.low !== '-') idxData[key].low = window.StockUtils.formatNumber(q.low, 2);
+        if (q.open && q.open !== '-') idxData[key].open = window.StockUtils.formatNumber(q.open, 2);
+        if (q.prevClose && q.prevClose !== '-') idxData[key].prev = window.StockUtils.formatNumber(q.prevClose, 2);
 
         // 同步更新大盤分頁卡片
-        const idxTseVal = document.querySelector('#idx-tse .index-card-val');
-        const idxTseChange = document.querySelector('#idx-tse .index-card-change');
-        if (idxTseVal) idxTseVal.textContent = idxData['idx-tse'].val;
-        if (idxTseChange) {
-          idxTseChange.textContent = `${symbol} ${window.StockUtils.formatNumber(Math.abs(change), 2)} (${window.StockUtils.formatPercent(changePct)})`;
-          idxTseChange.className = `index-card-change ${colorClass}`;
-        }
-
-        // 大盤詳細大字
-        const bigVal = document.getElementById('market-big-val');
-        const bigChange = document.getElementById('market-big-change');
-        if (bigVal && document.querySelector('#idx-tse.active')) {
-          const activeTitleEl = document.getElementById('market-active-title');
-          if (activeTitleEl) activeTitleEl.textContent = idxData['idx-tse'].name;
-
-          bigVal.textContent = idxData['idx-tse'].val;
-          bigVal.className = `market-large-val ${colorClass}`;
-          bigChange.textContent = idxData['idx-tse'].change;
-          bigChange.className = `market-large-change ${colorClass}`;
+        const cardVal = document.querySelector(`#${key} .index-card-val`);
+        const cardChange = document.querySelector(`#${key} .index-card-change`);
+        if (cardVal) cardVal.textContent = idxData[key].val;
+        if (cardChange) {
+          cardChange.textContent = `${symbol} ${window.StockUtils.formatNumber(Math.abs(change), 2)}`;
+          cardChange.className = `index-card-change ${colorClass}`;
         }
       }
 
-      if (twoiiMeta) {
-        const price = twoiiMeta.regularMarketPrice || twoiiMeta.chartPreviousClose || 0;
-        const prevClose = twoiiMeta.previousClose || twoiiMeta.chartPreviousClose || price;
-        const change = price - prevClose;
-        const changePct = prevClose > 0 ? (change / prevClose) * 100 : 0;
-        
+      // 專門更新大盤 (TSE - 加權指數) 到頂部動作橫列
+      const twii = quotes['T00.TW'];
+      if (twii && twii.price > 0 && !twii.error) {
+        const change = twii.change;
         const isUp = change > 0;
         const colorClass = isUp ? 'stock-up' : (change < 0 ? 'stock-down' : 'stock-flat');
         const symbol = isUp ? '▲' : (change < 0 ? '▼' : '');
+        const timeStr = idxData['idx-tse'].time;
 
-        // 同步更新全域變數 idxData 供點選時調用最新資料
-        idxData['idx-otc'].val = window.StockUtils.formatNumber(price, 2);
-        idxData['idx-otc'].change = `${symbol} ${window.StockUtils.formatNumber(Math.abs(change), 2)} (${window.StockUtils.formatPercent(changePct)})`;
-        idxData['idx-otc'].isUp = isUp;
-        if (twoiiMeta.regularMarketDayHigh) idxData['idx-otc'].high = window.StockUtils.formatNumber(twoiiMeta.regularMarketDayHigh, 2);
-        if (twoiiMeta.regularMarketDayLow) idxData['idx-otc'].low = window.StockUtils.formatNumber(twoiiMeta.regularMarketDayLow, 2);
+        valEl.textContent = idxData['idx-tse'].val;
+        valEl.className = colorClass;
 
-        const idxOtcVal = document.querySelector('#idx-otc .index-card-val');
-        const idxOtcChange = document.querySelector('#idx-otc .index-card-change');
-        if (idxOtcVal) idxOtcVal.textContent = idxData['idx-otc'].val;
-        if (idxOtcChange) {
-          idxOtcChange.textContent = `${symbol} ${window.StockUtils.formatNumber(Math.abs(change), 2)} (${window.StockUtils.formatPercent(changePct)})`;
-          idxOtcChange.className = `index-card-change ${colorClass}`;
+        changeEl.textContent = `${symbol} ${window.StockUtils.formatNumber(Math.abs(change), 2)} (${window.StockUtils.formatPercent(twii.changePercent)})`;
+        changeEl.className = colorClass;
+
+        if (badgeTimeEl) {
+          badgeTimeEl.textContent = `（更新時間： ${timeStr}）`;
         }
+      }
 
-        // 大盤詳細大字 (若目前在櫃買)
+      // 如果當前是在大盤分頁且有選中的 active 卡片，更新右側大字與詳細數據
+      const activeCard = document.querySelector('.index-card.active');
+      if (activeCard) {
+        const key = activeCard.id;
+        const d = idxData[key];
         const bigVal = document.getElementById('market-big-val');
         const bigChange = document.getElementById('market-big-change');
-        if (bigVal && document.querySelector('#idx-otc.active')) {
-          const activeTitleEl = document.getElementById('market-active-title');
-          if (activeTitleEl) activeTitleEl.textContent = idxData['idx-otc'].name;
+        const activeTitleEl = document.getElementById('market-active-title');
+        const activeTimeEl = document.getElementById('market-active-time');
 
-          bigVal.textContent = idxData['idx-otc'].val;
+        if (d && bigVal && bigChange) {
+          const colorClass = d.isUp ? 'stock-up' : (d.change.includes('▼') ? 'stock-down' : 'stock-flat');
+          if (activeTitleEl) activeTitleEl.textContent = d.name;
+          
+          bigVal.textContent = d.val;
           bigVal.className = `market-large-val ${colorClass}`;
-          bigChange.textContent = idxData['idx-otc'].change;
+          
+          bigChange.textContent = d.change;
           bigChange.className = `market-large-change ${colorClass}`;
+
+          if (activeTimeEl) {
+            activeTimeEl.textContent = d.time ? `（更新時間： ${d.time}）` : '（更新時間： -）';
+          }
+
+          const marketOpenVal = document.getElementById('market-open-val');
+          const marketHighVal = document.getElementById('market-high-val');
+          const marketLowVal = document.getElementById('market-low-val');
+          const marketPrevVal = document.getElementById('market-prev-val');
+
+          if (marketOpenVal) marketOpenVal.textContent = d.open;
+          if (marketHighVal) marketHighVal.textContent = d.high;
+          if (marketLowVal) marketLowVal.textContent = d.low;
+          if (marketPrevVal) marketPrevVal.textContent = d.prev;
         }
       }
     } catch (e) {
