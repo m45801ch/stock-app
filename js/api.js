@@ -168,6 +168,7 @@
 
       results[symKey] = {
         symbol: symKey,
+        name: item.n ? item.n.trim() : '',
         price: currentPrice > 0 ? Number(currentPrice.toFixed(2)) : (y > 0 ? Number(y.toFixed(2)) : 0),
         change: Number(change.toFixed(2)),
         changePercent: Number(changePercent.toFixed(2)),
@@ -245,6 +246,7 @@
 
           results[sym] = {
             symbol: sym,
+            name: (q.longName || q.shortName || '').trim(),
             price: Number(price.toFixed(2)),
             change: Number(change.toFixed(2)),
             changePercent: Number(changePercent.toFixed(2)),
@@ -390,7 +392,7 @@
         })
         .map(q => ({
           symbol: q.symbol.toUpperCase(),
-          name: q.longname || q.shortname || cleanKeyword,
+          name: q.longName || q.shortName || q.longname || q.shortname || cleanKeyword,
           exchange: q.exchange,
           typeDisp: 'EQUITY'
         }));

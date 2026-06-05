@@ -1484,7 +1484,7 @@ select:disabled {
 .btn-detail-close {
   background: #f1f3f5;
   border: 1px solid #dee2e6;
-  color: var(--text-main);
+  color: #000000;
   font-size: 13px;
   font-weight: 600;
   padding: 6px 16px;
@@ -1611,7 +1611,7 @@ select:disabled {
 .detail-chart-title {
   font-size: 15px;
   font-weight: 700;
-  color: var(--text-main);
+  color: #000000;
 }
 
 .detail-chart-subtitle {
@@ -1671,11 +1671,11 @@ select:disabled {
 }
 
 .dg-label {
-  color: var(--text-sub);
+  color: #000000;
 }
 
 .dg-val {
-  color: var(--text-main);
+  color: #000000;
   text-align: right;
   padding-right: 8px;
 }

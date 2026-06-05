@@ -80,6 +80,11 @@
         let displayName = stock.name;
         if (dictStock && dictStock.name) {
           displayName = dictStock.name;
+        } else if (quote && quote.name && quote.name !== '-' && quote.name !== stock.symbol) {
+          if (!displayName || displayName === stock.symbol || displayName.startsWith('台股 ') || displayName === stock.symbol.split('.')[0]) {
+            displayName = quote.name;
+            window.StockDB.updateStockNameInGroup(groupId, stock.symbol, quote.name).catch(console.error);
+          }
         }
 
         portfolioItems.push({
