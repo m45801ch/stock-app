@@ -1,4 +1,4 @@
-const CACHE_NAME = "tw-stock-tracker-v23";
+const CACHE_NAME = "tw-stock-tracker-v24";
 const ASSETS = [
   "./",
   "./index.html",

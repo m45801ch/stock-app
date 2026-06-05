@@ -2907,10 +2907,11 @@ body.force-mobile .stock-row-summary.view-holdings .col-shares {
   }
   .group-management-btns {
     display: flex !important;
-    justify-content: flex-end !important;
+    justify-content: flex-start !important;
     padding-bottom: 4px !important;
     margin-top: 2px !important;
     width: 100% !important;
+    padding-left: 4px !important;
   }
   .group-management-btns button {
     white-space: nowrap !important;
@@ -2958,10 +2959,11 @@ body.force-mobile .group-tab {
 }
 body.force-mobile .group-management-btns {
   display: flex !important;
-  justify-content: flex-end !important;
+  justify-content: flex-start !important;
   padding-bottom: 4px !important;
   margin-top: 2px !important;
   width: 100% !important;
+  padding-left: 4px !important;
 }
 body.force-mobile .group-management-btns button {
   white-space: nowrap !important;
