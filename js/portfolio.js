@@ -3,6 +3,9 @@
   let expandedParentTxs = new Set(); // 記錄第二層折疊：哪些已平倉買入交易的「賣出子列」是展開狀態
 
   async function renderPortfolio(groupId) {
+    if (!window.txDateSortOrder) {
+      window.txDateSortOrder = 'desc'; // 預設最近新增的排最前面
+    }
     const container = document.getElementById('portfolio-container');
     const summaryValuation = document.getElementById('summary-valuation');
     const summaryTodayChange = document.getElementById('summary-today-change');
@@ -242,6 +245,17 @@
         const parentTxs = txs.filter(t => !t.parentId);
         const childTxsMap = new Map();
         
+        // 交易歷史日期排序 (升序/降序)
+        const txSortOrder = window.txDateSortOrder || 'desc';
+        parentTxs.sort((a, b) => {
+          const dateA = new Date(a.date);
+          const dateB = new Date(b.date);
+          if (dateA - dateB === 0) {
+            return txSortOrder === 'asc' ? a.id - b.id : b.id - a.id;
+          }
+          return txSortOrder === 'asc' ? dateA - dateB : dateB - dateA;
+        });
+        
         txs.forEach(t => {
           if (t.parentId) {
             if (!childTxsMap.has(t.parentId)) {
@@ -450,7 +464,9 @@
                 <thead>
                   <tr>
                     <th class="tx-check-cell"><input type="checkbox" class="tx-select-all" title="全選"></th>
-                    <th>交易日期</th>
+                    <th class="sortable-tx-date" style="cursor: pointer; user-select: none; color: var(--primary-color);" title="點擊切換日期排序">
+                      交易日期 ${window.txDateSortOrder === 'asc' ? '▲' : '▼'}
+                    </th>
                     <th>買入/賣出</th>
                     <th>交易股數</th>
                     <th>交易股價</th>
@@ -466,6 +482,16 @@
           </div>
         `;
         row.appendChild(detailsDiv);
+
+        // 綁定交易日期表頭排序點擊事件
+        const sortHeader = detailsDiv.querySelector('.sortable-tx-date');
+        if (sortHeader) {
+          sortHeader.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            window.txDateSortOrder = window.txDateSortOrder === 'asc' ? 'desc' : 'asc';
+            await renderPortfolio(groupId);
+          });
+        }
 
         // 綁定第一層展開收合事件 (股票)
         summaryRow.addEventListener('click', (e) => {
