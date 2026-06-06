@@ -2441,12 +2441,12 @@ body.force-mobile .summary-pnl-item .summary-value {
   /* 持股明細分頁寬度與顯示設定 */
   .stock-table-header.view-holdings {
     display: grid !important;
-    grid-template-columns: 40px 1.6fr 2fr 1.4fr 1.5fr 1.5fr 1.5fr 2.5fr 1.2fr 50px !important;
+    grid-template-columns: 40px 1.8fr 2.3fr 1.1fr 1.4fr 1.5fr 1.4fr 2.1fr 1.0fr 50px !important;
     min-width: 1300px !important;
   }
   .stock-row-summary.view-holdings {
     display: grid !important;
-    grid-template-columns: 40px 1.6fr 2fr 1.4fr 1.5fr 1.5fr 1.5fr 2.5fr 1.2fr 50px !important;
+    grid-template-columns: 40px 1.8fr 2.3fr 1.1fr 1.4fr 1.5fr 1.4fr 2.1fr 1.0fr 50px !important;
     grid-template-areas: none !important;
     gap: 0 !important;
     padding: 8px 16px !important;
@@ -2454,7 +2454,19 @@ body.force-mobile .summary-pnl-item .summary-value {
   }
   .stock-table-header.view-holdings.batch-mode-active,
   .stock-row-summary.view-holdings.batch-mode-active {
-    grid-template-columns: 40px 30px 1.6fr 2fr 1.4fr 1.5fr 1.5fr 1.5fr 2.5fr 1.2fr 50px !important;
+    grid-template-columns: 40px 30px 1.8fr 2.3fr 1.1fr 1.4fr 1.5fr 1.4fr 2.1fr 1.0fr 50px !important;
+  }
+  .stock-table-header.view-holdings > div,
+  .stock-row-summary.view-holdings > div {
+    text-align: right !important;
+  }
+  .stock-table-header.view-holdings .col-expand,
+  .stock-table-header.view-holdings .col-batch-check,
+  .stock-table-header.view-holdings .col-info,
+  .stock-row-summary.view-holdings .col-expand,
+  .stock-row-summary.view-holdings .col-batch-check,
+  .stock-row-summary.view-holdings .col-info {
+    text-align: left !important;
   }
 
   /* 強制還原隱藏的欄位，呈現完整表格，並防範 grid-area 跑位 */
@@ -2540,12 +2552,12 @@ body.force-mobile .stock-row-summary.view-summary.batch-mode-active {
 
 body.force-mobile .stock-table-header.view-holdings {
   display: grid !important;
-  grid-template-columns: 40px 1.6fr 2fr 1.4fr 1.5fr 1.5fr 1.5fr 2.5fr 1.2fr 50px !important;
+  grid-template-columns: 40px 1.8fr 2.3fr 1.1fr 1.4fr 1.5fr 1.4fr 2.1fr 1.0fr 50px !important;
   min-width: 1300px !important;
 }
 body.force-mobile .stock-row-summary.view-holdings {
   display: grid !important;
-  grid-template-columns: 40px 1.6fr 2fr 1.4fr 1.5fr 1.5fr 1.5fr 2.5fr 1.2fr 50px !important;
+  grid-template-columns: 40px 1.8fr 2.3fr 1.1fr 1.4fr 1.5fr 1.4fr 2.1fr 1.0fr 50px !important;
   grid-template-areas: none !important;
   gap: 0 !important;
   padding: 8px 16px !important;
@@ -2553,7 +2565,19 @@ body.force-mobile .stock-row-summary.view-holdings {
 }
 body.force-mobile .stock-table-header.view-holdings.batch-mode-active,
 body.force-mobile .stock-row-summary.view-holdings.batch-mode-active {
-  grid-template-columns: 40px 30px 1.6fr 2fr 1.4fr 1.5fr 1.5fr 1.5fr 2.5fr 1.2fr 50px !important;
+  grid-template-columns: 40px 30px 1.8fr 2.3fr 1.1fr 1.4fr 1.5fr 1.4fr 2.1fr 1.0fr 50px !important;
+}
+body.force-mobile .stock-table-header.view-holdings > div,
+body.force-mobile .stock-row-summary.view-holdings > div {
+  text-align: right !important;
+}
+body.force-mobile .stock-table-header.view-holdings .col-expand,
+body.force-mobile .stock-table-header.view-holdings .col-batch-check,
+body.force-mobile .stock-table-header.view-holdings .col-info,
+body.force-mobile .stock-row-summary.view-holdings .col-expand,
+body.force-mobile .stock-row-summary.view-holdings .col-batch-check,
+body.force-mobile .stock-row-summary.view-holdings .col-info {
+  text-align: left !important;
 }
 
 body.force-mobile .stock-table-header > div,
