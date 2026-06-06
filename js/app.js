@@ -88,6 +88,7 @@
     initPwaInstallPrompt();
     initAppLogoTitle();
     initDividendToggle();
+    initExpenseToggle();
   });
 
   // 初始化配息折抵計算模式切換
@@ -117,6 +118,37 @@
       } else {
         divToggle.textContent = '損益計算：不含配息';
         divToggle.classList.remove('active');
+      }
+    }
+  }
+
+  // 初始化手續費與稅金扣除模式切換
+  function initExpenseToggle() {
+    const expToggle = document.getElementById('btn-expense-toggle');
+    if (!expToggle) return;
+
+    // 初始化按鈕文字與高亮狀態
+    const currentMode = localStorage.getItem('expense_mode') || 'include';
+    updateToggleUI(currentMode);
+
+    expToggle.addEventListener('click', async () => {
+      const isInclude = localStorage.getItem('expense_mode') !== 'exclude';
+      const nextMode = isInclude ? 'exclude' : 'include';
+      localStorage.setItem('expense_mode', nextMode);
+      
+      updateToggleUI(nextMode);
+
+      // 重新渲染以更新損益數值
+      await refreshPortfolio();
+    });
+
+    function updateToggleUI(mode) {
+      if (mode === 'include') {
+        expToggle.textContent = '損益計算：扣稅費';
+        expToggle.classList.add('active');
+      } else {
+        expToggle.textContent = '損益計算：未扣稅費';
+        expToggle.classList.remove('active');
       }
     }
   }

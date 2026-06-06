@@ -44,6 +44,8 @@
 
       // 讀取 localStorage 儲存的配息模式狀態 (預設為 include 含配息)
       const includeDividends = localStorage.getItem('dividend_mode') !== 'exclude';
+      // 讀取 localStorage 儲存的稅費模式狀態 (預設為 include 扣除稅費)
+      const includeExpenses = localStorage.getItem('expense_mode') !== 'exclude';
 
       // ── 並行取得所有股票的交易紀錄 + 字典名稱 + 歷年配息 ──
       const [allTxsList, allDictStocks, allDividends] = await Promise.all([
@@ -64,7 +66,7 @@
         }
         let quote = quotes[lookupKey];
         if (!quote || quote.price === 0) {
-          const tempCalc = window.StockUtils.calculatePortfolio(txs, 0, dividends, includeDividends);
+          const tempCalc = window.StockUtils.calculatePortfolio(txs, 0, dividends, includeDividends, includeExpenses);
           quote = {
             symbol: stock.symbol,
             price: tempCalc.averageCost,
@@ -82,7 +84,7 @@
           };
         }
 
-        const calc = window.StockUtils.calculatePortfolio(txs, quote.price, dividends, includeDividends);
+        const calc = window.StockUtils.calculatePortfolio(txs, quote.price, dividends, includeDividends, includeExpenses);
 
         // 中文名稱自動導正機制
         let displayName = stock.name;
@@ -274,6 +276,7 @@
             
             // A. 渲染父交易 (買入列)
             const parentVal = parentTx.shares * parentTx.price;
+            const currentMarketVal = parentTx.shares * quote.price;
             const isBuy = parentTx.type === 'buy';
             
             let typeCellHTML = '';
@@ -326,6 +329,7 @@
                   </div>
                 </td>
                 <td>${window.StockUtils.formatNumber(parentVal, 2)}</td>
+                <td>${quote.price > 0 ? window.StockUtils.formatNumber(currentMarketVal, 2) : '-'}</td>
                 <td>
                   ${deleteCellHTML}
                 </td>
@@ -334,6 +338,7 @@
 
             children.forEach(childTx => {
               const childVal = childTx.shares * childTx.price;
+              const currentMarketValChild = childTx.shares * quote.price;
               
               txRowsHTML += `
                 <tr class="tx-child-row" data-id="${childTx.id}" data-parent-id="${parentTx.id}" style="display: ${isChildExpanded ? 'table-row' : 'none'};">
@@ -360,6 +365,7 @@
                     </div>
                   </td>
                   <td>${window.StockUtils.formatNumber(childVal, 2)}</td>
+                  <td>${quote.price > 0 ? window.StockUtils.formatNumber(currentMarketValChild, 2) : '-'}</td>
                   <td>
                     <button class="delete-tx-btn" data-id="${childTx.id}" title="刪除此筆賣出，恢復未賣出狀態">刪除</button>
                   </td>
@@ -470,7 +476,8 @@
                     <th>買入/賣出</th>
                     <th>交易股數</th>
                     <th>交易股價</th>
-                    <th>市值</th>
+                    <th>交易金額</th>
+                    <th>目前市值</th>
                     <th>操作</th>
                   </tr>
                 </thead>

@@ -3107,12 +3107,14 @@ body.force-mobile .group-management-btns button {
   }
 }
 
-/* 配息切換按鈕狀態高亮 (緊鄰新增群組旁之 btn-link) */
-#btn-dividend-toggle.active {
+/* 配息與稅費切換按鈕狀態高亮 (緊鄰新增群組旁之 btn-link) */
+#btn-dividend-toggle.active,
+#btn-expense-toggle.active {
   color: var(--primary-color) !important;
   font-weight: 700 !important;
 }
-#btn-dividend-toggle:not(.active) {
+#btn-dividend-toggle:not(.active),
+#btn-expense-toggle:not(.active) {
   color: var(--text-sub) !important;
   font-weight: 500 !important;
 }
