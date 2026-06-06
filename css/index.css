@@ -2442,7 +2442,7 @@ body.force-mobile .summary-pnl-item .summary-value {
   .stock-table-header.view-holdings {
     display: grid !important;
     grid-template-columns: 40px 1.8fr 2.3fr 1.1fr 1.4fr 1.5fr 1.4fr 2.1fr 1.0fr 50px !important;
-    min-width: 1300px !important;
+    min-width: 1050px !important;
   }
   .stock-row-summary.view-holdings {
     display: grid !important;
@@ -2450,7 +2450,7 @@ body.force-mobile .summary-pnl-item .summary-value {
     grid-template-areas: none !important;
     gap: 0 !important;
     padding: 8px 16px !important;
-    min-width: 1300px !important;
+    min-width: 1050px !important;
   }
   .stock-table-header.view-holdings.batch-mode-active,
   .stock-row-summary.view-holdings.batch-mode-active {
@@ -2463,9 +2463,11 @@ body.force-mobile .summary-pnl-item .summary-value {
   .stock-table-header.view-holdings .col-expand,
   .stock-table-header.view-holdings .col-batch-check,
   .stock-table-header.view-holdings .col-info,
+  .stock-table-header.view-holdings .col-price,
   .stock-row-summary.view-holdings .col-expand,
   .stock-row-summary.view-holdings .col-batch-check,
-  .stock-row-summary.view-holdings .col-info {
+  .stock-row-summary.view-holdings .col-info,
+  .stock-row-summary.view-holdings .col-price {
     text-align: left !important;
   }
 
@@ -2553,7 +2555,7 @@ body.force-mobile .stock-row-summary.view-summary.batch-mode-active {
 body.force-mobile .stock-table-header.view-holdings {
   display: grid !important;
   grid-template-columns: 40px 1.8fr 2.3fr 1.1fr 1.4fr 1.5fr 1.4fr 2.1fr 1.0fr 50px !important;
-  min-width: 1300px !important;
+  min-width: 1050px !important;
 }
 body.force-mobile .stock-row-summary.view-holdings {
   display: grid !important;
@@ -2561,7 +2563,7 @@ body.force-mobile .stock-row-summary.view-holdings {
   grid-template-areas: none !important;
   gap: 0 !important;
   padding: 8px 16px !important;
-  min-width: 1300px !important;
+  min-width: 1050px !important;
 }
 body.force-mobile .stock-table-header.view-holdings.batch-mode-active,
 body.force-mobile .stock-row-summary.view-holdings.batch-mode-active {
@@ -2574,9 +2576,11 @@ body.force-mobile .stock-row-summary.view-holdings > div {
 body.force-mobile .stock-table-header.view-holdings .col-expand,
 body.force-mobile .stock-table-header.view-holdings .col-batch-check,
 body.force-mobile .stock-table-header.view-holdings .col-info,
+body.force-mobile .stock-table-header.view-holdings .col-price,
 body.force-mobile .stock-row-summary.view-holdings .col-expand,
 body.force-mobile .stock-row-summary.view-holdings .col-batch-check,
-body.force-mobile .stock-row-summary.view-holdings .col-info {
+body.force-mobile .stock-row-summary.view-holdings .col-info,
+body.force-mobile .stock-row-summary.view-holdings .col-price {
   text-align: left !important;
 }
 
