@@ -450,8 +450,8 @@
     }
   }
 
-  async function refreshPortfolio() {
-    await window.StockPortfolio.renderPortfolio(activeGroupId);
+  async function refreshPortfolio(force = false) {
+    await window.StockPortfolio.renderPortfolio(activeGroupId, force);
   }
 
   function bindHeaderActions() {
@@ -1474,7 +1474,7 @@
   // ============================================================
   // 更新動作橫列右側的大盤加權指數標籤 (改用免 Proxy Yahoo JSONP 直連)
   // ============================================================
-  async function updateBroadMarketBadge() {
+  async function updateBroadMarketBadge(force = false) {
     const valEl = document.getElementById('bm-badge-val');
     const changeEl = document.getElementById('bm-badge-change');
     const badgeTimeEl = document.getElementById('bm-badge-time');
@@ -1485,7 +1485,7 @@
         throw new Error('API 工具尚未載入');
       }
 
-      const quotes = await window.StockAPI.fetchBatchQuotes(['t00.TW', 'o00.TWO', 't13.TW', 't17.TW']);
+      const quotes = await window.StockAPI.fetchBatchQuotes(['t00.TW', 'o00.TWO', 't13.TW', 't17.TW'], force);
       
       const mapping = {
         'idx-tse': quotes['T00.TW'],
@@ -1602,8 +1602,8 @@
         const originalText = btnRefreshQuotes.innerHTML;
         btnRefreshQuotes.innerHTML = '🔄 更新中...';
         try {
-          await refreshPortfolio();
-          await updateBroadMarketBadge();
+          await refreshPortfolio(true);
+          await updateBroadMarketBadge(true);
         } catch (e) {
           console.error(e);
         } finally {

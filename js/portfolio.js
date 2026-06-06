@@ -2,7 +2,7 @@
   let expandedStocks = new Set();
   let expandedParentTxs = new Set(); // 記錄第二層折疊：哪些已平倉買入交易的「賣出子列」是展開狀態
 
-  async function renderPortfolio(groupId) {
+  async function renderPortfolio(groupId, force = false) {
     if (!window.txDateSortOrder) {
       window.txDateSortOrder = 'desc'; // 預設最近新增的排最前面
     }
@@ -33,7 +33,7 @@
       }
 
       const symbols = stocks.map(s => s.symbol);
-      const quotes = await window.StockAPI.fetchBatchQuotes(symbols);
+      const quotes = await window.StockAPI.fetchBatchQuotes(symbols, force);
 
       let portfolioItems = [];
       let totalMarketValue = 0;

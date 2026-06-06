@@ -205,7 +205,44 @@
     'T17.TW': '^TFNI'
   };
 
-  async function fetchBatchQuotes(symbols) {
+  // 判斷當前是否為台股開盤交易時間（週一至週五 08:58 - 13:35）
+  function isMarketOpen() {
+    const now = new Date();
+    const day = now.getDay();
+    const hours = now.getHours();
+    const minutes = now.getMinutes();
+    const timeVal = hours * 100 + minutes;
+    return (day >= 1 && day <= 5) && (timeVal >= 858 && timeVal <= 1335);
+  }
+
+  // 取得最近一次的收盤時間戳記（用於判斷非開盤時間快取新鮮度）
+  function getLastMarketCloseTime() {
+    const now = new Date();
+    const todayClose = new Date(now);
+    todayClose.setHours(13, 35, 0, 0);
+
+    const day = now.getDay();
+    if (day === 0) { // 週日
+      const lastClose = new Date(todayClose);
+      lastClose.setDate(now.getDate() - 2); // 退回到週五
+      return lastClose.getTime();
+    } else if (day === 6) { // 週六
+      const lastClose = new Date(todayClose);
+      lastClose.setDate(now.getDate() - 1); // 退回到週五
+      return lastClose.getTime();
+    } else { // 週一至週五
+      if (now.getTime() < todayClose.getTime()) {
+        const lastClose = new Date(todayClose);
+        const daysToSubtract = (day === 1) ? 3 : 1; // 週一退回到週五（3天），其他退回前一天
+        lastClose.setDate(now.getDate() - daysToSubtract);
+        return lastClose.getTime();
+      } else {
+        return todayClose.getTime();
+      }
+    }
+  }
+
+  async function fetchBatchQuotes(symbols, force = false) {
     if (!symbols || symbols.length === 0) return {};
 
     // 標準化所有代號（補 .TW 後綴）
@@ -216,99 +253,128 @@
     });
 
     const results = {};
-    const indexSymbols = ['T00.TW', 'O00.TWO', 'T13.TW', 'T17.TW'];
-    const stockSymbols = normalized.filter(sym => !indexSymbols.includes(sym));
+    const useCacheOnly = !force && !isMarketOpen();
+    const lastCloseTime = getLastMarketCloseTime();
 
-    // 1. 先嘗試使用 TWSE API 批次查詢一般個股（因為 TWSE 有買進、賣出、開盤等即時最完整數據）
-    if (stockSymbols.length > 0) {
-      try {
-        const twseResults = await fetchTWSEQuotes(stockSymbols);
-        Object.keys(twseResults).forEach(sym => {
-          if (twseResults[sym] && twseResults[sym].price > 0) {
-            results[sym] = twseResults[sym];
-          }
-        });
-        
-        // 補足中文名稱（優先使用 API 回傳，若無則從本地字典取得）
-        for (const sym of stockSymbols) {
-          if (results[sym] && !results[sym].name) {
-            try {
-              const dictStock = await window.StockDB.getStockFromDictionary(sym);
-              if (dictStock && dictStock.name) {
-                results[sym].name = dictStock.name;
-              }
-            } catch (e) {}
-          }
-        }
-      } catch (e) {
-        console.warn('[fetchBatchQuotes] TWSE 批次查詢失敗，將全數備援至 Yahoo:', e.message);
-      }
-    }
-
-    // 2. 篩選出需要使用 Yahoo Chart 查詢的代號（大盤指數，或是 TWSE 查詢失敗的個股）
-    const yahooSymbols = normalized.filter(sym => !results[sym] || results[sym].price <= 0);
-
-    if (yahooSymbols.length > 0) {
-      // 並行發送 Yahoo Chart 請求
-      const fetchPromises = yahooSymbols.map(async (sym) => {
-        const yahooSym = SYMBOL_MAPPING[sym] || sym;
-        const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${yahooSym}?interval=1d&range=2d&_=${Date.now()}`;
+    // 篩選出需要從網路抓取的代號
+    const symbolsToFetch = [];
+    normalized.forEach(sym => {
+      const cacheKey = `cached_quote_${sym}`;
+      const cachedData = localStorage.getItem(cacheKey);
+      if (useCacheOnly && cachedData) {
         try {
-          const data = await fetchWithProxyFallback(targetUrl, (json) => json && json.chart && Array.isArray(json.chart.result));
-          const result = data.chart?.result?.[0];
-          if (result) {
-            const meta = result.meta;
-            const price = meta.regularMarketPrice || meta.chartPreviousClose || 0;
-            const prevClose = meta.previousClose || meta.chartPreviousClose || price;
-            const change = price - prevClose;
-            const changePercent = prevClose ? (change / prevClose) * 100 : 0;
-            
-            const now = new Date();
-            const time = now.toLocaleTimeString('zh-TW', { hour12: false, hour: '2-digit', minute: '2-digit' });
+          const parsed = JSON.parse(cachedData);
+          // 快取必須存在、有價格，且取得時間 (fetchTime) 大於等於最近一次收盤時間
+          if (parsed && parsed.price > 0 && parsed.fetchTime && parsed.fetchTime >= lastCloseTime) {
+            parsed.offline = true;
+            results[sym] = parsed;
+            console.log(`[非交易時間快取] ${sym} 載入成功: 現價=${parsed.price}`);
+          } else {
+            symbolsToFetch.push(sym);
+          }
+        } catch (e) {
+          symbolsToFetch.push(sym);
+        }
+      } else {
+        symbolsToFetch.push(sym);
+      }
+    });
 
-            // 獲取本地字典名稱，填補中文名稱 (若有)
-            let displayName = '';
-            if (sym === 'T00.TW') displayName = '加權指數';
-            else if (sym === 'O00.TWO') displayName = '櫃買指數';
-            else if (sym === 'T13.TW') displayName = '電子指數';
-            else if (sym === 'T17.TW') displayName = '金融指數';
-            else {
+    if (symbolsToFetch.length > 0) {
+      const indexSymbols = ['T00.TW', 'O00.TWO', 'T13.TW', 'T17.TW'];
+      const stockSymbols = symbolsToFetch.filter(sym => !indexSymbols.includes(sym));
+
+      // 1. 先嘗試使用 TWSE API 批次查詢一般個股（因為 TWSE 有買進、賣出、開盤等即時最完整數據）
+      if (stockSymbols.length > 0) {
+        try {
+          const twseResults = await fetchTWSEQuotes(stockSymbols);
+          Object.keys(twseResults).forEach(sym => {
+            if (twseResults[sym] && twseResults[sym].price > 0) {
+              results[sym] = twseResults[sym];
+            }
+          });
+          
+          // 補足中文名稱（優先使用 API 回傳，若無則從本地字典取得）
+          for (const sym of stockSymbols) {
+            if (results[sym] && !results[sym].name) {
               try {
                 const dictStock = await window.StockDB.getStockFromDictionary(sym);
                 if (dictStock && dictStock.name) {
-                  displayName = dictStock.name;
+                  results[sym].name = dictStock.name;
                 }
               } catch (e) {}
             }
-
-            // 優化 Yahoo Chart 開盤、最高、最低的解析，增加從 indicators.quote 讀取的備份
-            const rawOpen = meta.regularMarketOpen || result.indicators?.quote?.[0]?.open?.[0];
-            const rawHigh = meta.regularMarketDayHigh || result.indicators?.quote?.[0]?.high?.[0];
-            const rawLow = meta.regularMarketDayLow || result.indicators?.quote?.[0]?.low?.[0];
-
-            results[sym] = {
-              symbol: sym, // 保持原始的 Symbol
-              name: displayName || results[sym]?.name || '',
-              price: Number(price.toFixed(2)),
-              change: Number(change.toFixed(2)),
-              changePercent: Number(changePercent.toFixed(2)),
-              open: (rawOpen && rawOpen > 0) ? Number(rawOpen.toFixed(2)) : '-',
-              prevClose: prevClose ? Number(prevClose.toFixed(2)) : '-',
-              high: (rawHigh && rawHigh > 0) ? Number(rawHigh.toFixed(2)) : '-',
-              low: (rawLow && rawLow > 0) ? Number(rawLow.toFixed(2)) : '-',
-              volume: meta.regularMarketVolume ? Number((meta.regularMarketVolume / 1000).toFixed(0)) : '-',
-              time: time,
-              bid: '-',
-              ask: '-',
-              source: 'Yahoo-chart'
-            };
           }
-        } catch (err) {
-          console.warn(`[Yahoo] 查詢 ${sym} (${yahooSym}) 失敗:`, err.message);
+        } catch (e) {
+          console.warn('[fetchBatchQuotes] TWSE 批次查詢失敗，將全數備援至 Yahoo:', e.message);
         }
-      });
+      }
 
-      await Promise.all(fetchPromises);
+      // 2. 篩選出需要使用 Yahoo Chart 查詢的代號（大盤指數，或是 TWSE 查詢失敗的個股）
+      const yahooSymbols = symbolsToFetch.filter(sym => !results[sym] || results[sym].price <= 0);
+
+      if (yahooSymbols.length > 0) {
+        // 並行發送 Yahoo Chart 請求
+        const fetchPromises = yahooSymbols.map(async (sym) => {
+          const yahooSym = SYMBOL_MAPPING[sym] || sym;
+          const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${yahooSym}?interval=1d&range=2d&_=${Date.now()}`;
+          try {
+            const data = await fetchWithProxyFallback(targetUrl, (json) => json && json.chart && Array.isArray(json.chart.result));
+            const result = data.chart?.result?.[0];
+            if (result) {
+              const meta = result.meta;
+              const price = meta.regularMarketPrice || meta.chartPreviousClose || 0;
+              const prevClose = meta.previousClose || meta.chartPreviousClose || price;
+              const change = price - prevClose;
+              const changePercent = prevClose ? (change / prevClose) * 100 : 0;
+              
+              const now = new Date();
+              const time = now.toLocaleTimeString('zh-TW', { hour12: false, hour: '2-digit', minute: '2-digit' });
+
+              // 獲取本地字典名稱，填補中文名稱 (若有)
+              let displayName = '';
+              if (sym === 'T00.TW') displayName = '加權指數';
+              else if (sym === 'O00.TWO') displayName = '櫃買指數';
+              else if (sym === 'T13.TW') displayName = '電子指數';
+              else if (sym === 'T17.TW') displayName = '金融指數';
+              else {
+                try {
+                  const dictStock = await window.StockDB.getStockFromDictionary(sym);
+                  if (dictStock && dictStock.name) {
+                    displayName = dictStock.name;
+                  }
+                } catch (e) {}
+              }
+
+              // 優化 Yahoo Chart 開盤、最高、最低的解析，增加從 indicators.quote 讀取的備份
+              const rawOpen = meta.regularMarketOpen || result.indicators?.quote?.[0]?.open?.[0];
+              const rawHigh = meta.regularMarketDayHigh || result.indicators?.quote?.[0]?.high?.[0];
+              const rawLow = meta.regularMarketDayLow || result.indicators?.quote?.[0]?.low?.[0];
+
+              results[sym] = {
+                symbol: sym, // 保持原始的 Symbol
+                name: displayName || results[sym]?.name || '',
+                price: Number(price.toFixed(2)),
+                change: Number(change.toFixed(2)),
+                changePercent: Number(changePercent.toFixed(2)),
+                open: (rawOpen && rawOpen > 0) ? Number(rawOpen.toFixed(2)) : '-',
+                prevClose: prevClose ? Number(prevClose.toFixed(2)) : '-',
+                high: (rawHigh && rawHigh > 0) ? Number(rawHigh.toFixed(2)) : '-',
+                low: (rawLow && rawLow > 0) ? Number(rawLow.toFixed(2)) : '-',
+                volume: meta.regularMarketVolume ? Number((meta.regularMarketVolume / 1000).toFixed(0)) : '-',
+                time: time,
+                bid: '-',
+                ask: '-',
+                source: 'Yahoo-chart'
+              };
+            }
+          } catch (err) {
+            console.warn(`[Yahoo] 查詢 ${sym} (${yahooSym}) 失敗:`, err.message);
+          }
+        });
+
+        await Promise.all(fetchPromises);
+      }
     }
 
     // 快取備份與復原機制
@@ -316,6 +382,7 @@
       const q = results[sym];
       const cacheKey = `cached_quote_${sym}`;
       if (q && q.price > 0 && !q.offline && !q.error) {
+        q.fetchTime = Date.now(); // 記錄快取時間戳記
         localStorage.setItem(cacheKey, JSON.stringify(q));
       } else {
         const cachedData = localStorage.getItem(cacheKey);
@@ -353,6 +420,7 @@
     try {
       const r = await fetchTWSEQuotes([sym]);
       if (r[sym] && r[sym].price > 0) {
+        r[sym].fetchTime = Date.now();
         localStorage.setItem(`cached_quote_${sym}`, JSON.stringify(r[sym]));
         return r[sym];
       }
@@ -392,6 +460,7 @@
           ask: '-',
           source: 'Yahoo-chart'
         };
+        quote.fetchTime = Date.now();
         localStorage.setItem(`cached_quote_${sym}`, JSON.stringify(quote));
         return quote;
       }
