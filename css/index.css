@@ -2441,20 +2441,20 @@ body.force-mobile .summary-pnl-item .summary-value {
   /* 持股明細分頁寬度與顯示設定 */
   .stock-table-header.view-holdings {
     display: grid !important;
-    grid-template-columns: 40px 1.6fr 1.7fr 1.1fr 1.3fr 1.3fr 1.3fr 1.8fr 1.0fr 50px !important;
-    min-width: 1000px !important;
+    grid-template-columns: 40px 1.6fr 1.3fr 0.8fr 1.1fr 1.1fr 1.1fr 1.6fr 0.9fr 50px !important;
+    min-width: 950px !important;
   }
   .stock-row-summary.view-holdings {
     display: grid !important;
-    grid-template-columns: 40px 1.6fr 1.7fr 1.1fr 1.3fr 1.3fr 1.3fr 1.8fr 1.0fr 50px !important;
+    grid-template-columns: 40px 1.6fr 1.3fr 0.8fr 1.1fr 1.1fr 1.1fr 1.6fr 0.9fr 50px !important;
     grid-template-areas: none !important;
     gap: 0 !important;
     padding: 8px 16px !important;
-    min-width: 1000px !important;
+    min-width: 950px !important;
   }
   .stock-table-header.view-holdings.batch-mode-active,
   .stock-row-summary.view-holdings.batch-mode-active {
-    grid-template-columns: 40px 30px 1.6fr 1.7fr 1.1fr 1.3fr 1.3fr 1.3fr 1.8fr 1.0fr 50px !important;
+    grid-template-columns: 40px 30px 1.6fr 1.3fr 0.8fr 1.1fr 1.1fr 1.1fr 1.6fr 0.9fr 50px !important;
   }
   .stock-table-header.view-holdings > div,
   .stock-row-summary.view-holdings > div {
@@ -2562,20 +2562,20 @@ body.force-mobile .stock-row-summary.view-summary.batch-mode-active {
 
 body.force-mobile .stock-table-header.view-holdings {
   display: grid !important;
-  grid-template-columns: 40px 1.6fr 1.7fr 1.1fr 1.3fr 1.3fr 1.3fr 1.8fr 1.0fr 50px !important;
-  min-width: 1000px !important;
+  grid-template-columns: 40px 1.6fr 1.3fr 0.8fr 1.1fr 1.1fr 1.1fr 1.6fr 0.9fr 50px !important;
+  min-width: 950px !important;
 }
 body.force-mobile .stock-row-summary.view-holdings {
   display: grid !important;
-  grid-template-columns: 40px 1.6fr 1.7fr 1.1fr 1.3fr 1.3fr 1.3fr 1.8fr 1.0fr 50px !important;
+  grid-template-columns: 40px 1.6fr 1.3fr 0.8fr 1.1fr 1.1fr 1.1fr 1.6fr 0.9fr 50px !important;
   grid-template-areas: none !important;
   gap: 0 !important;
   padding: 8px 16px !important;
-  min-width: 1000px !important;
+  min-width: 950px !important;
 }
 body.force-mobile .stock-table-header.view-holdings.batch-mode-active,
 body.force-mobile .stock-row-summary.view-holdings.batch-mode-active {
-  grid-template-columns: 40px 30px 1.6fr 1.7fr 1.1fr 1.3fr 1.3fr 1.3fr 1.8fr 1.0fr 50px !important;
+  grid-template-columns: 40px 30px 1.6fr 1.3fr 0.8fr 1.1fr 1.1fr 1.1fr 1.6fr 0.9fr 50px !important;
 }
 body.force-mobile .stock-table-header.view-holdings > div,
 body.force-mobile .stock-row-summary.view-holdings > div {
