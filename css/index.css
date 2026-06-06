@@ -2992,10 +2992,18 @@ body.force-mobile .stock-row-summary.view-holdings .col-shares {
     margin-top: 2px !important;
     width: 100% !important;
     padding-left: 4px !important;
+    overflow-x: auto !important;
+    flex-wrap: nowrap !important;
+    scrollbar-width: none !important;
+    gap: 4px !important;
+  }
+  .group-management-btns::-webkit-scrollbar {
+    display: none !important;
   }
   .group-management-btns button {
     white-space: nowrap !important;
-    font-size: 12px !important;
+    font-size: 11px !important;
+    padding: 4px 6px !important;
   }
 }
 
@@ -3044,10 +3052,18 @@ body.force-mobile .group-management-btns {
   margin-top: 2px !important;
   width: 100% !important;
   padding-left: 4px !important;
+  overflow-x: auto !important;
+  flex-wrap: nowrap !important;
+  scrollbar-width: none !important;
+  gap: 4px !important;
+}
+body.force-mobile .group-management-btns::-webkit-scrollbar {
+  display: none !important;
 }
 body.force-mobile .group-management-btns button {
   white-space: nowrap !important;
-  font-size: 12px !important;
+  font-size: 11px !important;
+  padding: 4px 6px !important;
 }
 
 /* 自訂標題樣式 */
