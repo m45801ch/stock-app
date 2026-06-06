@@ -2460,14 +2460,17 @@ body.force-mobile .summary-pnl-item .summary-value {
   .stock-row-summary.view-holdings > div {
     text-align: right !important;
   }
+  .stock-table-header.view-holdings .col-price,
+  .stock-row-summary.view-holdings .col-price {
+    text-align: left !important;
+    padding-left: 10px !important;
+  }
   .stock-table-header.view-holdings .col-expand,
   .stock-table-header.view-holdings .col-batch-check,
   .stock-table-header.view-holdings .col-info,
-  .stock-table-header.view-holdings .col-price,
   .stock-row-summary.view-holdings .col-expand,
   .stock-row-summary.view-holdings .col-batch-check,
-  .stock-row-summary.view-holdings .col-info,
-  .stock-row-summary.view-holdings .col-price {
+  .stock-row-summary.view-holdings .col-info {
     text-align: left !important;
   }
 
@@ -2573,14 +2576,17 @@ body.force-mobile .stock-table-header.view-holdings > div,
 body.force-mobile .stock-row-summary.view-holdings > div {
   text-align: right !important;
 }
+body.force-mobile .stock-table-header.view-holdings .col-price,
+body.force-mobile .stock-row-summary.view-holdings .col-price {
+  text-align: left !important;
+  padding-left: 10px !important;
+}
 body.force-mobile .stock-table-header.view-holdings .col-expand,
 body.force-mobile .stock-table-header.view-holdings .col-batch-check,
 body.force-mobile .stock-table-header.view-holdings .col-info,
-body.force-mobile .stock-table-header.view-holdings .col-price,
 body.force-mobile .stock-row-summary.view-holdings .col-expand,
 body.force-mobile .stock-row-summary.view-holdings .col-batch-check,
-body.force-mobile .stock-row-summary.view-holdings .col-info,
-body.force-mobile .stock-row-summary.view-holdings .col-price {
+body.force-mobile .stock-row-summary.view-holdings .col-info {
   text-align: left !important;
 }
 
