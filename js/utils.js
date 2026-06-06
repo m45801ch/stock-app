@@ -34,10 +34,16 @@
     let activeBuyBatches = []; // 存儲尚未被賣出抵消的買入批次 { originalPrice, shares, originalShares, buyFee, date }
     let realizedPnL = 0; // 已實現損益
 
+    // 取得股票代號並判定是否為 ETF (台股 ETF 代號皆以 00 開頭)
+    const firstTx = transactions[0];
+    const symbol = firstTx ? (firstTx.symbol || '') : '';
+    const isETF = symbol.startsWith('00');
+    const taxRate = isETF ? 0.001 : 0.003; // ETF 適用 0.1% 交易稅，個股適用 0.3%
+
     // 費用與稅金計算輔助函數
     const getBuyFee = (val) => includeExpenses ? Math.max(20, Math.floor(val * 0.001425)) : 0;
     const getSellFee = (val) => includeExpenses ? Math.max(20, Math.floor(val * 0.001425)) : 0;
-    const getSellTax = (val) => includeExpenses ? Math.floor(val * 0.003) : 0;
+    const getSellTax = (val) => includeExpenses ? Math.floor(val * taxRate) : 0;
 
     // 排序確保時間先後順序
     const sortedTxs = [...transactions].sort((a, b) => new Date(a.date) - new Date(b.date));
@@ -110,7 +116,7 @@
     const totalCost = activeBuyBatches.reduce((sum, batch) => sum + (batch.shares * getAdjustedPrice(batch)), 0);
     const averageCost = totalShares > 0 ? (totalCost / totalShares) : 0;
 
-    const marketValue = totalShares * currentPrice;
+    const rawMarketValue = totalShares * currentPrice;
 
     // 預估當前持有部位若於此時賣出，所需的交易手續費及證券交易稅
     const estSellValue = totalShares * currentPrice;
@@ -118,7 +124,10 @@
     const estSellTax = totalShares > 0 ? getSellTax(estSellValue) : 0;
     const estSellExpenses = estSellFee + estSellTax;
 
-    const unrealizedPnL = totalShares > 0 ? (marketValue - estSellExpenses - totalCost) : 0;
+    // 依據是否扣除稅費，調整回傳的市值
+    const marketValue = includeExpenses ? (rawMarketValue - estSellExpenses) : rawMarketValue;
+
+    const unrealizedPnL = totalShares > 0 ? (marketValue - totalCost) : 0;
     const unrealizedPnLPercent = totalCost > 0 ? (unrealizedPnL / totalCost) * 100 : 0;
 
     return {
