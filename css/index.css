@@ -617,6 +617,16 @@ body {
 }
 
 /* 欄位微調 */
+.col-price,
+.col-shares,
+.col-avg-cost,
+.col-market-val,
+.col-realized,
+.col-unrealized,
+.col-tx-count {
+  padding-left: 12px;
+}
+
 .col-expand {
   display: flex;
   align-items: center;
@@ -1124,17 +1134,19 @@ body {
   }
   .col-expand { grid-area: expand; }
   .col-info { grid-area: name; }
-  .col-price { grid-area: price; text-align: right; }
+  .col-price { grid-area: price; text-align: right; padding-left: 0; }
   .col-shares { 
     grid-area: shares; 
     font-size: 12px; 
     color: var(--text-sub);
     padding-top: 4px;
+    padding-left: 0;
   }
   .col-unrealized { 
     grid-area: unrealized; 
     text-align: right;
     padding-top: 4px;
+    padding-left: 0;
   }
   .col-avg-cost, .col-market-val, .col-realized, .col-tx-count, .col-actions {
     display: none; /* 行動版摘要隱藏較少用欄位，點展開才看得到 */
@@ -1968,19 +1980,21 @@ body.force-mobile .stock-row-summary {
 
 body.force-mobile .col-expand { grid-area: expand !important; }
 body.force-mobile .col-info { grid-area: name !important; }
-body.force-mobile .col-price { grid-area: price !important; text-align: right !important; }
+body.force-mobile .col-price { grid-area: price !important; text-align: right !important; padding-left: 0 !important; }
 body.force-mobile .col-shares { 
   grid-area: shares !important; 
   font-size: 12px !important; 
   color: var(--text-sub) !important;
   padding-top: 4px !important;
   display: block !important;
+  padding-left: 0 !important;
 }
 body.force-mobile .col-unrealized { 
   grid-area: unrealized !important; 
   text-align: right !important;
   padding-top: 4px !important;
   display: block !important;
+  padding-left: 0 !important;
 }
 
 body.force-mobile .col-avg-cost, 
@@ -2254,6 +2268,14 @@ html, body {
     width: 100% !important;
     max-width: 100% !important;
     padding: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+  .pwa-banner {
+    order: -2 !important;
+  }
+  .summary-board {
+    order: -1 !important;
   }
 }
 
@@ -2264,6 +2286,14 @@ body.force-mobile .main-container {
   width: 100% !important;
   max-width: 100% !important;
   padding: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+body.force-mobile .pwa-banner {
+  order: -2 !important;
+}
+body.force-mobile .summary-board {
+  order: -1 !important;
 }
 
 /* 2. 資產總覽看板 (PNL) 行動端改為垂直分行顯示 (當日變動、已實現、未實現) */
