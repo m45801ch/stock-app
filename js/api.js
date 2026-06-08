@@ -42,15 +42,15 @@
   // ============================================================
   const PROXIES = [
     'https://api.allorigins.win/raw?url=',
+    'https://api.allorigins.win/get?url=',
     'https://api.codetabs.com/v1/proxy/?quest=',
-    'https://corsproxy.io/?',
     null
   ];
 
   // Sticky proxy：記住上次成功的 proxy，下次排第一
   let _lastWorkingProxyIdx = 0;
 
-  async function fetchWithTimeout(url, timeout = 6000) { // 調大超時至 6 秒
+  async function fetchWithTimeout(url, timeout = 15000) { // 調大超時至 15 秒，避免慢速 Proxy 被 Abort
     const controller = new AbortController();
     const id = setTimeout(() => controller.abort(), timeout);
     try {
@@ -64,10 +64,6 @@
   }
 
   async function fetchWithProxyFallback(targetUrl, validateFn = null) {
-    if (window.location.search.includes('mock_failure=true')) {
-      throw new Error('Mocked Network Failure');
-    }
-
     // 把上次成功的 proxy 移到最前面
     const orderedProxies = [
       ...PROXIES.slice(_lastWorkingProxyIdx),
