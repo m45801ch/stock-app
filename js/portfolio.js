@@ -41,6 +41,7 @@
       let totalTodayChange = 0;
       let totalRealizedPnL = 0;
       let totalUnrealizedPnL = 0;
+      let hasOffline = false;
 
       // 讀取 localStorage 儲存的配息模式狀態 (預設為 include 含配息)
       const includeDividends = localStorage.getItem('dividend_mode') !== 'exclude';
@@ -80,8 +81,13 @@
             time: '-',
             bid: '-',
             ask: '-',
-            isOffline: true
+            isOffline: true,
+            offline: true
           };
+        }
+
+        if (quote && (quote.offline || quote.isOffline)) {
+          hasOffline = true;
         }
 
         const calc = window.StockUtils.calculatePortfolio(txs, quote.price, dividends, includeDividends, includeExpenses);
@@ -142,14 +148,14 @@
       if (updateTimeEl) {
         const now = new Date();
         const timeStr = now.toLocaleTimeString('zh-TW', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
-        updateTimeEl.textContent = `(更新時間: ${timeStr})`;
+        updateTimeEl.textContent = `(更新時間: ${timeStr})${hasOffline ? ' (部分資料為快取)' : ''}`;
       }
 
       const summaryUpdateTime = document.getElementById('summary-update-time');
       if (summaryUpdateTime) {
         const now = new Date();
         const timeStr = now.toLocaleTimeString('zh-TW', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
-        summaryUpdateTime.textContent = `${timeStr} 更新`;
+        summaryUpdateTime.textContent = `${timeStr} 更新${hasOffline ? ' (含快取)' : ''}`;
       }
 
       if (summaryTodayChange) {
@@ -406,7 +412,7 @@
             <div style="text-align: right;">${formatQuoteVal(quote.high)}</div>
             <div style="text-align: right;">${formatQuoteVal(quote.low)}</div>
             <div style="text-align: right;">${formatQuoteVal(quote.volume, 0)}</div>
-            <div style="text-align: right; font-size: 12px; color: var(--text-sub);">${quote.time || '-'}</div>
+            <div style="text-align: right; font-size: 12px; color: var(--text-sub);">${quote.time || '-'}${quote.offline ? ' (快取)' : ''}</div>
             <div class="col-actions">
               <button class="delete-stock-btn" title="從自選股移除">✕</button>
             </div>

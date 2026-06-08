@@ -64,6 +64,10 @@
   }
 
   async function fetchWithProxyFallback(targetUrl, validateFn = null) {
+    if (window.location.search.includes('mock_failure=true')) {
+      throw new Error('Mocked Network Failure');
+    }
+
     // 把上次成功的 proxy 移到最前面
     const orderedProxies = [
       ...PROXIES.slice(_lastWorkingProxyIdx),
@@ -205,39 +209,70 @@
     'T17.TW': '^TFNI'
   };
 
-  // 判斷當前是否為台股開盤交易時間（週一至週五 08:58 - 13:35）
+  // 取得台北時間物件 (其數值代表台北當前的年月日、時分秒，用於 getDay() 等本地屬性取得)
+  function getTaipeiDate() {
+    const now = new Date();
+    const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+    return new Date(utc + (3600000 * 8));
+  }
+
+  // 判斷當前是否為台股開盤交易時間（週一至週五 08:58 - 13:35，台北時間）
   function isMarketOpen() {
     const now = new Date();
-    const day = now.getDay();
-    const hours = now.getHours();
-    const minutes = now.getMinutes();
-    const timeVal = hours * 100 + minutes;
+    const parts = new Intl.DateTimeFormat('zh-TW', {
+      timeZone: 'Asia/Taipei',
+      hour: 'numeric',
+      minute: 'numeric',
+      hour12: false
+    }).formatToParts(now);
+    
+    const getVal = (type) => parts.find(p => p.type === type).value;
+    const hour = parseInt(getVal('hour'), 10);
+    const minute = parseInt(getVal('minute'), 10);
+    const timeVal = hour * 100 + minute;
+    
+    const tzDate = getTaipeiDate();
+    const day = tzDate.getDay();
+    
     return (day >= 1 && day <= 5) && (timeVal >= 858 && timeVal <= 1335);
   }
 
-  // 取得最近一次的收盤時間戳記（用於判斷非開盤時間快取新鮮度）
+  // 取得最近一次的台北收盤時間的真實 UTC 時間戳記
   function getLastMarketCloseTime() {
     const now = new Date();
-    const todayClose = new Date(now);
-    todayClose.setHours(13, 35, 0, 0);
-
-    const day = now.getDay();
-    if (day === 0) { // 週日
-      const lastClose = new Date(todayClose);
-      lastClose.setDate(now.getDate() - 2); // 退回到週五
-      return lastClose.getTime();
-    } else if (day === 6) { // 週六
-      const lastClose = new Date(todayClose);
-      lastClose.setDate(now.getDate() - 1); // 退回到週五
-      return lastClose.getTime();
+    const parts = new Intl.DateTimeFormat('zh-TW', {
+      timeZone: 'Asia/Taipei',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: 'numeric',
+      minute: 'numeric',
+      second: 'numeric',
+      hour12: false
+    }).formatToParts(now);
+    
+    const getVal = (type) => parts.find(p => p.type === type).value;
+    const year = getVal('year');
+    const month = getVal('month');
+    const day = getVal('day');
+    
+    const tzDate = getTaipeiDate();
+    const weekday = tzDate.getDay();
+    
+    // 台北當天 13:35:00 的真實 UTC 時間戳
+    const todayCloseTime = Date.parse(`${year}-${month}-${day}T13:35:00+08:00`);
+    const nowTime = now.getTime();
+    
+    if (weekday === 0) { // 週日
+      return todayCloseTime - 2 * 24 * 3600 * 1000;
+    } else if (weekday === 6) { // 週六
+      return todayCloseTime - 1 * 24 * 3600 * 1000;
     } else { // 週一至週五
-      if (now.getTime() < todayClose.getTime()) {
-        const lastClose = new Date(todayClose);
-        const daysToSubtract = (day === 1) ? 3 : 1; // 週一退回到週五（3天），其他退回前一天
-        lastClose.setDate(now.getDate() - daysToSubtract);
-        return lastClose.getTime();
+      if (nowTime < todayCloseTime) {
+        const daysToSubtract = (weekday === 1) ? 3 : 1; // 週一退回到週五，其他退回前一天
+        return todayCloseTime - daysToSubtract * 24 * 3600 * 1000;
       } else {
-        return todayClose.getTime();
+        return todayCloseTime;
       }
     }
   }

@@ -1625,18 +1625,30 @@
         if (enabled) {
           autoRefreshIntervalId = setInterval(async () => {
             const now = new Date();
-            const day = now.getDay();
-            const hours = now.getHours();
-            const minutes = now.getMinutes();
-            const timeVal = hours * 100 + minutes;
+            const parts = new Intl.DateTimeFormat('zh-TW', {
+              timeZone: 'Asia/Taipei',
+              hour: 'numeric',
+              minute: 'numeric',
+              hour12: false
+            }).formatToParts(now);
+            
+            const getVal = (type) => parts.find(p => p.type === type).value;
+            const hour = parseInt(getVal('hour'), 10);
+            const minute = parseInt(getVal('minute'), 10);
+            const timeVal = hour * 100 + minute;
 
-            // 台股交易時間週一至週五 08:58 至 13:35
+            // 轉換為 UTC 時間戳，再加上 8 小時得到台北時間戳，以便用 getDay() 拿到台北星期幾
+            const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+            const tzDate = new Date(utc + (3600000 * 8));
+            const day = tzDate.getDay();
+
+            // 台股交易時間週一至週五 08:58 至 13:35 (台北時間)
             const isMarketHours = (day >= 1 && day <= 5) && (timeVal >= 858 && timeVal <= 1335);
 
             if (isMarketHours) {
               console.log('交易時間內，自動重整報價中...');
-              await refreshPortfolio();
-              await updateBroadMarketBadge();
+              await refreshPortfolio(true);
+              await updateBroadMarketBadge(true);
             } else {
               console.log('非交易時間，跳過自動重整');
             }
