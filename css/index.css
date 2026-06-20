@@ -285,25 +285,33 @@ body {
 
 .group-management-btns {
   display: flex;
-  gap: 8px;
+  align-items: center;
+  gap: 2px;
   padding-bottom: 8px;
 }
 
 .btn-link {
   background: transparent;
   border: none;
-  color: #0056b3;
+  color: var(--primary-color);
   cursor: pointer;
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   text-decoration: none;
-  padding: 4px 8px;
-  border-radius: 4px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  border: 1px solid transparent;
+  transition: all var(--transition-fast);
+  letter-spacing: 0.2px;
 }
 
 .btn-link:hover {
-  background: rgba(0, 86, 179, 0.05);
-  text-decoration: underline;
+  background: rgba(243, 156, 18, 0.08);
+  border-color: rgba(243, 156, 18, 0.2);
+}
+
+.btn-link:active {
+  transform: scale(0.97);
 }
 
 .btn-link-danger {
@@ -3011,7 +3019,7 @@ body.force-mobile .stock-row-summary.view-holdings .col-shares {
   .group-management-btns button {
     white-space: nowrap !important;
     font-size: 11px !important;
-    padding: 4px 6px !important;
+    padding: 4px 10px !important;
   }
 }
 
@@ -3071,7 +3079,7 @@ body.force-mobile .group-management-btns::-webkit-scrollbar {
 body.force-mobile .group-management-btns button {
   white-space: nowrap !important;
   font-size: 11px !important;
-  padding: 4px 6px !important;
+  padding: 4px 10px !important;
 }
 
 /* 自訂標題樣式 */
@@ -3134,13 +3142,22 @@ body.force-mobile .group-management-btns button {
 /* 配息與稅費切換按鈕狀態高亮 (緊鄰新增群組旁之 btn-link) */
 #btn-dividend-toggle.active,
 #btn-expense-toggle.active {
-  color: var(--primary-color) !important;
+  color: #000 !important;
   font-weight: 700 !important;
+  background: var(--gold-grad) !important;
+  border-color: transparent !important;
 }
 #btn-dividend-toggle:not(.active),
 #btn-expense-toggle:not(.active) {
   color: var(--text-sub) !important;
   font-weight: 500 !important;
+  border-color: transparent !important;
+}
+#btn-dividend-toggle:not(.active):hover,
+#btn-expense-toggle:not(.active):hover {
+  color: var(--primary-color) !important;
+  background: rgba(243, 156, 18, 0.06) !important;
+  border-color: rgba(243, 156, 18, 0.15) !important;
 }
 
 /* ═══════════════════════════════════════════
