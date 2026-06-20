@@ -4,50 +4,50 @@
   let idxData = {
     'idx-tse': {
       name: '加權指數',
-      val: '45,677.46',
-      change: '▼ 781.70 (1.68%)',
-      isUp: false,
-      vol: '成交 12415.28 億',
-      open: '46,364.07',
-      high: '46,364.07',
-      low: '45,677.46',
-      prev: '46,459.16',
+      val: '-',
+      change: '-',
+      isUp: null,
+      vol: '-',
+      open: '-',
+      high: '-',
+      low: '-',
+      prev: '-',
       time: '-'
     },
     'idx-otc': {
       name: '櫃買指數',
-      val: '440.10',
-      change: '▼ 6.72 (1.50%)',
-      isUp: false,
-      vol: '成交 2781.06 億',
-      open: '446.82',
-      high: '447.10',
-      low: '439.85',
-      prev: '446.82',
+      val: '-',
+      change: '-',
+      isUp: null,
+      vol: '-',
+      open: '-',
+      high: '-',
+      low: '-',
+      prev: '-',
       time: '-'
     },
     'idx-elec': {
       name: '電子指數',
-      val: '2,962.57',
-      change: '▼ 64.68 (2.14%)',
-      isUp: false,
-      vol: '成交 9036.36 億',
-      open: '3,027.25',
-      high: '3,027.25',
-      low: '2,955.30',
-      prev: '3,027.25',
+      val: '-',
+      change: '-',
+      isUp: null,
+      vol: '-',
+      open: '-',
+      high: '-',
+      low: '-',
+      prev: '-',
       time: '-'
     },
     'idx-fin': {
       name: '金融指數',
-      val: '2,907.52',
-      change: '▲ 25.87 (0.90%)',
-      isUp: true,
-      vol: '成交 637.6 億',
-      open: '2,881.65',
-      high: '2,912.44',
-      low: '2,875.20',
-      prev: '2,881.65',
+      val: '-',
+      change: '-',
+      isUp: null,
+      vol: '-',
+      open: '-',
+      high: '-',
+      low: '-',
+      prev: '-',
       time: '-'
     }
   };
@@ -580,10 +580,10 @@
           }
 
           marketBigVal.textContent = d.val;
-          marketBigVal.className = `market-large-val ${d.isUp ? 'stock-up' : 'stock-down'}`;
+          marketBigVal.className = `market-large-val ${d.isUp === true ? 'stock-up' : d.isUp === false ? 'stock-down' : 'stock-flat'}`;
           
           marketBigChange.textContent = d.change;
-          marketBigChange.className = `market-large-change ${d.isUp ? 'stock-up' : 'stock-down'}`;
+          marketBigChange.className = `market-large-change ${d.isUp === true ? 'stock-up' : d.isUp === false ? 'stock-down' : 'stock-flat'}`;
           
           marketBigVolText.textContent = d.vol;
 
@@ -598,18 +598,25 @@
     });
 
     // 繪製模擬走勢圖
-    function drawMarketTrendChart(isUp = false) {
+    function drawMarketTrendChart(isUp) {
       const canvas = document.getElementById('market-trend-canvas');
       if (!canvas) return;
       const ctx = canvas.getContext('2d');
       const w = canvas.width;
       const h = canvas.height;
-      
-      // 清空
+
       ctx.clearRect(0, 0, w, h);
 
-      // 背景橫網格線與時間標記
-      ctx.strokeStyle = '#e9dec4'; // 與底色更協調的米沙色格線
+      if (isUp === null || isUp === undefined) {
+        ctx.fillStyle = '#999';
+        ctx.font = '14px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('等待資料...', w / 2, h / 2);
+        ctx.textAlign = 'start';
+        return;
+      }
+
+      ctx.strokeStyle = '#e9dec4';
       ctx.lineWidth = 1;
       for (let i = 1; i < 5; i++) {
         const yCoord = (h / 5) * i;
@@ -619,8 +626,7 @@
         ctx.stroke();
       }
 
-      // 時間軸標記：09, 10, 11, 12, 13
-      ctx.fillStyle = '#05140d'; // 使用深色字體
+      ctx.fillStyle = '#05140d';
       ctx.font = 'bold 11px sans-serif';
       const timeLabels = ['09', '10', '11', '12', '13'];
       timeLabels.forEach((label, idx) => {
@@ -628,29 +634,24 @@
         ctx.fillText(label, Math.max(5, xCoord - 8), h - 10);
       });
 
-      // 模擬點位曲線
       ctx.beginPath();
       ctx.lineWidth = 2.5;
-      ctx.strokeStyle = isUp ? '#d90429' : '#00875a'; // 順應台股：上漲紅、下跌綠
+      ctx.strokeStyle = isUp ? '#d90429' : '#00875a';
 
       const points = [];
       const steps = 100;
       let currentVal = h / 2;
-      
-      // 隨機數種子以使曲線美觀
+
       for (let i = 0; i <= steps; i++) {
         const x = (w / steps) * i;
-        // 趨勢：如果是 isUp 就偏向往上走，反之偏向往下走
         const trend = isUp ? -0.3 : 0.45;
         const randomFactor = (Math.random() - 0.5) * 12 + trend;
         currentVal += randomFactor;
-        
-        // 限制在邊界內
+
         currentVal = Math.max(20, Math.min(h - 40, currentVal));
         points.push({ x, y: currentVal });
       }
 
-      // 繪製線條
       ctx.beginPath();
       ctx.moveTo(points[0].x, points[0].y);
       for (let i = 1; i < points.length; i++) {
@@ -658,7 +659,6 @@
       }
       ctx.stroke();
 
-      // 漸層填滿
       ctx.lineTo(w, h - 25);
       ctx.lineTo(0, h - 25);
       ctx.closePath();
@@ -1593,7 +1593,7 @@
 
   let autoRefreshIntervalId = null;
   function initAutoRefresh() {
-    const chkAutoRefresh = document.getElementById('chk-auto-refresh');
+    const selAutoRefresh = document.getElementById('sel-auto-refresh');
     const btnRefreshQuotes = document.getElementById('btn-refresh-quotes');
 
     if (btnRefreshQuotes) {
@@ -1613,57 +1613,86 @@
       });
     }
 
-    if (chkAutoRefresh) {
-      const storedState = localStorage.getItem('stock_app_auto_refresh') === 'true';
-      chkAutoRefresh.checked = storedState;
+    if (selAutoRefresh) {
+      const storedInterval = localStorage.getItem('stock_app_auto_refresh_interval') || '30000';
+      const validOptions = ['0', '30000', '60000', '300000'];
+      let initialValue = storedInterval;
+      if (!validOptions.includes(storedInterval) && storedInterval !== 'custom') {
+        initialValue = 'custom';
+      }
+      selAutoRefresh.value = initialValue;
 
-      const toggleInterval = (enabled) => {
+      const getIntervalMs = () => {
+        const val = selAutoRefresh.value;
+        if (val === 'custom') {
+          return parseInt(localStorage.getItem('stock_app_auto_refresh_custom'), 10) || 30000;
+        }
+        return parseInt(val, 10);
+      };
+
+      const toggleInterval = () => {
         if (autoRefreshIntervalId) {
           clearInterval(autoRefreshIntervalId);
           autoRefreshIntervalId = null;
         }
-        if (enabled) {
-          autoRefreshIntervalId = setInterval(async () => {
-            const now = new Date();
-            const parts = new Intl.DateTimeFormat('zh-TW', {
-              timeZone: 'Asia/Taipei',
-              hour: 'numeric',
-              minute: 'numeric',
-              hour12: false
-            }).formatToParts(now);
-            
-            const getVal = (type) => parts.find(p => p.type === type).value;
-            const hour = parseInt(getVal('hour'), 10);
-            const minute = parseInt(getVal('minute'), 10);
-            const timeVal = hour * 100 + minute;
+        const intervalMs = getIntervalMs();
+        if (intervalMs <= 0) return;
 
-            // 轉換為 UTC 時間戳，再加上 8 小時得到台北時間戳，以便用 getDay() 拿到台北星期幾
-            const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
-            const tzDate = new Date(utc + (3600000 * 8));
-            const day = tzDate.getDay();
+        autoRefreshIntervalId = setInterval(async () => {
+          const now = new Date();
+          const parts = new Intl.DateTimeFormat('zh-TW', {
+            timeZone: 'Asia/Taipei',
+            hour: 'numeric',
+            minute: 'numeric',
+            hour12: false
+          }).formatToParts(now);
 
-            // 台股交易時間週一至週五 08:58 至 13:35 (台北時間)
-            const isMarketHours = (day >= 1 && day <= 5) && (timeVal >= 858 && timeVal <= 1335);
+          const getVal = (type) => parts.find(p => p.type === type).value;
+          const hour = parseInt(getVal('hour'), 10);
+          const minute = parseInt(getVal('minute'), 10);
+          const timeVal = hour * 100 + minute;
 
-            if (isMarketHours) {
-              console.log('交易時間內，自動重整報價中...');
-              await refreshPortfolio(true);
-              await updateBroadMarketBadge(true);
-            } else {
-              console.log('非交易時間，跳過自動重整');
-            }
-          }, 30000);
-        }
+          const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+          const tzDate = new Date(utc + (3600000 * 8));
+          const day = tzDate.getDay();
+
+          const isMarketHours = (day >= 1 && day <= 5) && (timeVal >= 858 && timeVal <= 1335);
+
+          if (isMarketHours) {
+            console.log('交易時間內，自動重整報價中...');
+            await refreshPortfolio(true);
+            await updateBroadMarketBadge(true);
+          } else {
+            console.log('非交易時間，跳過自動重整');
+          }
+        }, intervalMs);
       };
 
-      chkAutoRefresh.addEventListener('change', (e) => {
-        const checked = e.target.checked;
-        localStorage.setItem('stock_app_auto_refresh', checked);
-        toggleInterval(checked);
+      selAutoRefresh.addEventListener('change', (e) => {
+        const val = e.target.value;
+        if (val === 'custom') {
+          let input = prompt('請輸入自動重整間隔（秒）:', '30');
+          if (input !== null) {
+            const seconds = parseInt(input, 10);
+            if (!isNaN(seconds) && seconds > 0) {
+              localStorage.setItem('stock_app_auto_refresh_custom', seconds * 1000);
+              localStorage.setItem('stock_app_auto_refresh_interval', 'custom');
+            } else {
+              selAutoRefresh.value = '0';
+              localStorage.setItem('stock_app_auto_refresh_interval', '0');
+            }
+          } else {
+            selAutoRefresh.value = localStorage.getItem('stock_app_auto_refresh_interval') || '30000';
+            return;
+          }
+        } else {
+          localStorage.setItem('stock_app_auto_refresh_interval', val);
+        }
+        toggleInterval();
       });
 
-      if (storedState) {
-        toggleInterval(true);
+      if (initialValue !== '0') {
+        toggleInterval();
       }
     }
   }

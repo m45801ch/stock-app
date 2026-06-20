@@ -232,7 +232,8 @@
         const isExpanded = expandedStocks.has(stock.symbol);
 
         const row = document.createElement('div');
-        row.className = `stock-row ${isExpanded ? 'is-expanded' : ''}`;
+        const directionClass = quote.change > 0 ? 'is-up' : (quote.change < 0 ? 'is-down' : '');
+        row.className = `stock-row ${directionClass} ${isExpanded ? 'is-expanded' : ''}`;
         row.dataset.symbol = stock.symbol;
 
         const priceColorClass = quote.change > 0 ? 'stock-up' : (quote.change < 0 ? 'stock-down' : 'stock-flat');

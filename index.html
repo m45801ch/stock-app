@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="./icons/icon-192.png">
   
   <!-- 樣式表 -->
-  <link rel="stylesheet" href="./css/index.css?v=20260608_2">
+  <link rel="stylesheet" href="./css/index.css?v=20260619_1">
 </head>
 <body>
 
@@ -118,8 +118,8 @@
         <span class="action-link-separator" id="batch-stocks-sep">|</span>
         <div id="broad-market-badge" style="display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; background: #f1f3f5; padding: 3px 10px; border-radius: 12px; margin-left: 4px; white-space: nowrap; flex-wrap: nowrap;">
           <span style="color: var(--text-sub); font-weight: 500; white-space: nowrap;">大盤:</span>
-          <span id="bm-badge-val" class="stock-down" style="white-space: nowrap;">45,677.46</span>
-          <span id="bm-badge-change" class="stock-down" style="white-space: nowrap;">▼ 781.70 (1.68%)</span>
+          <span id="bm-badge-val" class="stock-flat" style="white-space: nowrap;">-</span>
+          <span id="bm-badge-change" class="stock-flat" style="white-space: nowrap;">-</span>
           <span id="bm-badge-time" style="font-size: 11px; color: var(--text-sub); font-weight: normal; margin-left: 4px; white-space: nowrap;"></span>
         </div>
         <span class="action-link-separator" id="bm-badge-sep">|</span>
@@ -132,7 +132,14 @@
           ⚙️ 版面: 自動
         </button>
         <label style="display: inline-flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 600; color: var(--text-sub); cursor: pointer; user-select: none;">
-          <input type="checkbox" id="chk-auto-refresh" style="accent-color: var(--primary-color);"> 30s 自動重整
+          <select id="sel-auto-refresh" style="font-size:12px; padding:2px 4px; border:1px solid var(--border-color); border-radius:4px; background:var(--bg-color); color:var(--text-main); cursor:pointer;">
+            <option value="0">關閉</option>
+            <option value="30000" selected>30s</option>
+            <option value="60000">60s</option>
+            <option value="300000">300s</option>
+            <option value="custom">自訂</option>
+          </select>
+          <span>自動重整</span>
         </label>
         <button id="btn-refresh-quotes" class="btn-pill" style="padding: 4px 10px; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;">
           🔄 立即更新
@@ -657,11 +664,11 @@
   <script src="./js/stock_data.js?v=20260605_2"></script>
   <script src="./js/utils.js?v=20260605_3"></script>
   <script src="./js/db.js?v=20260605_2"></script>
-  <script src="./js/api.js?v=20260608_2"></script>
+  <script src="./js/api.js?v=20260619_1"></script>
   <script src="./js/sync.js?v=20260605_2"></script>
   <script src="./js/search.js?v=20260605_2"></script>
   <script src="./js/transaction.js?v=20260605_2"></script>
   <script src="./js/portfolio.js?v=20260608_2"></script>
-  <script src="./js/app.js?v=20260608_2"></script>
+  <script src="./js/app.js?v=20260619_1"></script>
 </body>
 </html>
