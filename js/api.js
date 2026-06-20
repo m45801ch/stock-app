@@ -437,7 +437,7 @@
       if (q && q.price > 0 && !q.offline && !q.error) {
         q.fetchTime = Date.now();
         localStorage.setItem(cacheKey, JSON.stringify(q));
-      } else {
+      } else if (!force) {
         const cachedData = localStorage.getItem(cacheKey);
         if (cachedData) {
           try {
