@@ -1485,8 +1485,55 @@
         throw new Error('API 工具尚未載入');
       }
 
+      // 直接透過 TWSE JSONP 查詢加權指數 (tse_t00.tw)，更穩定快速
+      if (typeof window.StockAPI.fetchTWSEViaJSONP === 'function') {
+        try {
+          const twseData = await window.StockAPI.fetchTWSEViaJSONP('tse_t00.tw', 5000);
+          if (twseData && Array.isArray(twseData.msgArray) && twseData.msgArray.length > 0) {
+            const item = twseData.msgArray[0];
+            if (item && item.z && item.z !== '-' && parseFloat(item.z) > 0) {
+              const z = parseFloat(item.z);
+              const y = parseFloat(item.y) || z;
+              const change = z - y;
+              const changePct = y > 0 ? (change / y) * 100 : 0;
+              const isUp = change > 0;
+              const symbol = isUp ? '▲' : (change < 0 ? '▼' : '');
+              const priceStr = window.StockUtils.formatNumber(z, 2);
+              const changeStr = `${symbol} ${window.StockUtils.formatNumber(Math.abs(change), 2)} (${window.StockUtils.formatPercent(changePct)})`;
+
+              valEl.textContent = priceStr;
+              valEl.className = isUp ? 'stock-up' : (change < 0 ? 'stock-down' : 'stock-flat');
+              changeEl.textContent = changeStr;
+              changeEl.className = isUp ? 'stock-up' : (change < 0 ? 'stock-down' : 'stock-flat');
+
+              const now = new Date();
+              const localTimeStr = now.toLocaleTimeString('zh-TW', { hour12: false, hour: '2-digit', minute: '2-digit' });
+              document.getElementById('broad-market-badge')?.setAttribute('title', `更新時間： ${localTimeStr}`);
+              if (badgeTimeEl) badgeTimeEl.textContent = `（${localTimeStr}）`;
+
+              // 同步更新 idxData 中的加權指數
+              idxData['idx-tse'].val = priceStr;
+              idxData['idx-tse'].change = changeStr;
+              idxData['idx-tse'].isUp = isUp;
+              idxData['idx-tse'].time = localTimeStr;
+
+              const cardVal = document.querySelector('#idx-tse .index-card-val');
+              const cardChange = document.querySelector('#idx-tse .index-card-change');
+              if (cardVal) cardVal.textContent = priceStr;
+              if (cardChange) {
+                cardChange.textContent = `${symbol} ${window.StockUtils.formatNumber(Math.abs(change), 2)}`;
+                cardChange.className = `index-card-change ${isUp ? 'stock-up' : (change < 0 ? 'stock-down' : 'stock-flat')}`;
+              }
+            }
+          }
+        } catch (e) {
+          console.warn('[Badge] TWSE 直連加權指數失敗，使用主流程:', e.message);
+        }
+      }
+
       const quotes = await window.StockAPI.fetchBatchQuotes(['t00.TW', 'o00.TWO', 't13.TW', 't17.TW'], force);
       
+      // 用主流程的資料覆蓋（如果主流程有更完整的資料）
       const mapping = {
         'idx-tse': quotes['T00.TW'],
         'idx-otc': quotes['O00.TWO'],

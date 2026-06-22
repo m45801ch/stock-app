@@ -683,6 +683,7 @@
 
   window.StockAPI = {
     fetchJSONP,
+    fetchTWSEViaJSONP,
     fetchStockQuote: fetchSingleStockQuote,
     fetchBatchQuotes,
     searchStock,
