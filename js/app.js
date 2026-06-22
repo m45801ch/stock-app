@@ -1542,8 +1542,12 @@
         changeEl.textContent = `${symbol} ${window.StockUtils.formatNumber(Math.abs(change), 2)} (${window.StockUtils.formatPercent(twii.changePercent)})`;
         changeEl.className = colorClass;
 
+        const badgeContainer = document.getElementById('broad-market-badge');
+        if (badgeContainer) {
+          badgeContainer.title = `更新時間： ${localTimeStr}`;
+        }
         if (badgeTimeEl) {
-          badgeTimeEl.textContent = `（更新時間： ${localTimeStr}）`;
+          badgeTimeEl.textContent = `（${localTimeStr}）`;
         }
       }
 

@@ -388,9 +388,16 @@ body {
   box-shadow: var(--shadow-sm);
 }
 
-.action-links-left, .action-links-right {
+.action-links-left {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+}
+.action-links-right {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
   gap: 8px;
 }
 

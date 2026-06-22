@@ -116,11 +116,11 @@
           <button id="btn-cancel-delete-stocks" class="btn-secondary" style="padding: 2px 10px; font-size: 12px; border-radius: 4px;">取消</button>
         </span>
         <span class="action-link-separator" id="batch-stocks-sep">|</span>
-        <div id="broad-market-badge" style="display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; background: #f1f3f5; padding: 3px 10px; border-radius: 12px; margin-left: 4px; white-space: nowrap; flex-wrap: nowrap;">
-          <span style="color: var(--text-sub); font-weight: 500; white-space: nowrap;">大盤:</span>
-          <span id="bm-badge-val" class="stock-flat" style="white-space: nowrap;">-</span>
-          <span id="bm-badge-change" class="stock-flat" style="white-space: nowrap;">-</span>
-          <span id="bm-badge-time" style="font-size: 11px; color: var(--text-sub); font-weight: normal; margin-left: 4px; white-space: nowrap;"></span>
+        <div id="broad-market-badge" style="display: inline-flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 700; background: #f1f3f5; padding: 3px 8px; border-radius: 12px; margin-left: 4px; white-space: nowrap; flex-wrap: nowrap; max-width: 100%; overflow: hidden;">
+          <span style="color: var(--text-sub); font-weight: 500; white-space: nowrap; flex-shrink: 0;">大盤:</span>
+          <span id="bm-badge-val" class="stock-flat" style="white-space: nowrap; flex-shrink: 0;">-</span>
+          <span id="bm-badge-change" class="stock-flat" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;">-</span>
+          <span id="bm-badge-time" style="font-size: 11px; color: var(--text-sub); font-weight: normal; white-space: nowrap; flex-shrink: 0; display: none;"></span>
         </div>
         <span class="action-link-separator" id="bm-badge-sep">|</span>
         <button id="link-rename-group" class="action-link-btn" style="display: none;">編輯此群組</button>
