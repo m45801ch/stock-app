@@ -12,3 +12,7 @@ db.db
 *.njsproj
 *.sln
 *.sw?
+
+# Skills
+skill_translations.json
+translate_skills.ps1

@@ -341,31 +341,27 @@
     });
 
     if (symbolsToFetch.length > 0) {
-      const indexSymbols = ['T00.TW', 'O00.TWO', 'T13.TW', 'T17.TW'];
-      const stockSymbols = symbolsToFetch.filter(sym => !indexSymbols.includes(sym));
-
-      if (stockSymbols.length > 0) {
-        try {
-          const twseResults = await fetchTWSEQuotes(stockSymbols);
-          Object.keys(twseResults).forEach(sym => {
-            if (twseResults[sym] && twseResults[sym].price > 0) {
-              results[sym] = twseResults[sym];
-            }
-          });
-
-          for (const sym of stockSymbols) {
-            if (results[sym] && !results[sym].name) {
-              try {
-                const dictStock = await window.StockDB.getStockFromDictionary(sym);
-                if (dictStock && dictStock.name) {
-                  results[sym].name = dictStock.name;
-                }
-              } catch (e) {}
-            }
+      // 先透過 TWSE 查詢所有代號（包含大盤指數），TWSE JSONP 也支援 tse_t00.tw 等指數
+      try {
+        const twseResults = await fetchTWSEQuotes(symbolsToFetch);
+        Object.keys(twseResults).forEach(sym => {
+          if (twseResults[sym] && twseResults[sym].price > 0) {
+            results[sym] = twseResults[sym];
           }
-        } catch (e) {
-          console.warn('[fetchBatchQuotes] TWSE 查詢失敗，備援至 Yahoo:', e.message);
+        });
+
+        for (const sym of symbolsToFetch) {
+          if (results[sym] && !results[sym].name) {
+            try {
+              const dictStock = await window.StockDB.getStockFromDictionary(sym);
+              if (dictStock && dictStock.name) {
+                results[sym].name = dictStock.name;
+              }
+            } catch (e) {}
+          }
         }
+      } catch (e) {
+        console.warn('[fetchBatchQuotes] TWSE 查詢失敗，備援至 Yahoo:', e.message);
       }
 
       const yahooSymbols = symbolsToFetch.filter(sym => !results[sym] || results[sym].price <= 0);
@@ -604,33 +600,45 @@
     let sym = symbol.toUpperCase().trim();
     if (!sym.includes('.')) sym = `${sym}.TW`;
 
-    const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${sym}?interval=1d&range=10y&events=div&_=${Date.now()}`;
+    const yahooHosts = ['query1.finance.yahoo.com', 'query2.finance.yahoo.com'];
+    const ranges = ['5y', '10y'];
+
     console.log(`[API] 查詢配息歷史: ${sym}`);
-    try {
-      const data = await fetchWithProxyFallback(targetUrl, (json) => json && json.chart && Array.isArray(json.chart.result));
-      const result = data.chart?.result?.[0];
-      const dividends = [];
-      if (result && result.events && result.events.dividends) {
-        const divObj = result.events.dividends;
-        Object.keys(divObj).forEach(key => {
-          const item = divObj[key];
-          if (item && item.amount !== undefined) {
-            const divDate = new Date(item.date * 1000);
-            const dateStr = divDate.toISOString().split('T')[0];
-            dividends.push({
-              date: dateStr,
-              amount: Number(item.amount) || 0
+
+    for (const host of yahooHosts) {
+      for (const range of ranges) {
+        const targetUrl = `https://${host}/v8/finance/chart/${sym}?interval=1d&range=${range}&events=div&_=${Date.now()}`;
+        try {
+          const data = await fetchWithProxyFallback(targetUrl, (json) => json && json.chart && Array.isArray(json.chart.result));
+          const result = data.chart?.result?.[0];
+          const dividends = [];
+          if (result && result.events && result.events.dividends) {
+            const divObj = result.events.dividends;
+            Object.keys(divObj).forEach(key => {
+              const item = divObj[key];
+              if (item && item.amount !== undefined) {
+                const divDate = new Date(item.date * 1000);
+                const dateStr = divDate.toISOString().split('T')[0];
+                dividends.push({
+                  date: dateStr,
+                  amount: Number(item.amount) || 0
+                });
+              }
             });
           }
-        });
+          if (dividends.length > 0) {
+            dividends.sort((a, b) => new Date(a.date) - new Date(b.date));
+            console.log(`[API] ${sym} 獲取到 ${dividends.length} 筆配息紀錄 (${host}, range=${range})`);
+            return dividends;
+          }
+        } catch (e) {
+          console.warn(`[API] ${host} range=${range} 失敗:`, e.message);
+        }
       }
-      dividends.sort((a, b) => new Date(a.date) - new Date(b.date));
-      console.log(`[API] ${sym} 獲取到 ${dividends.length} 筆配息紀錄`);
-      return dividends;
-    } catch (e) {
-      console.warn(`[API] 獲取 ${sym} 歷史配息失敗:`, e.message);
-      return [];
     }
+
+    console.warn(`[API] ${sym} 所有配息查詢方式皆失敗`);
+    return [];
   }
 
   async function getStockDividendsWithCache(symbol) {
