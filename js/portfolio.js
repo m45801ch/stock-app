@@ -457,7 +457,7 @@
         detailsDiv.innerHTML = `
           <div class="details-inner">
             <div class="details-header">
-              <h3>歷史交易明細</h3>
+              <h3>歷史交易明細 <span style="font-size:13px;font-weight:500;color:var(--text-sub);">(${txs.length} 筆)</span></h3>
               <div style="display:flex;gap:8px;align-items:center;">
                 <div class="batch-toolbar" style="display:none;align-items:center;gap:8px;">
                   <span class="batch-count-label" style="font-size:13px;color:var(--text-sub);">已選 0 筆</span>
