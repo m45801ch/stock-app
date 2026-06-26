@@ -129,13 +129,46 @@
 
       // 股票排序處理
       const sortOrder = window.stockSortOrder || 'default';
-      if (sortOrder === 'code-asc') {
-        portfolioItems.sort((a, b) => a.stock.symbol.localeCompare(b.stock.symbol));
+      if (sortOrder === 'custom') {
+        const customOrder = JSON.parse(localStorage.getItem('stock_app_custom_order') || '[]');
+        if (customOrder.length > 0) {
+          const orderMap = new Map(customOrder.map((s, i) => [s, i]));
+          portfolioItems.sort((a, b) => {
+            const ai = orderMap.get(a.stock.symbol);
+            const bi = orderMap.get(b.stock.symbol);
+            if (ai !== undefined && bi !== undefined) return ai - bi;
+            if (ai !== undefined) return -1;
+            if (bi !== undefined) return 1;
+            return 0;
+          });
+        }
+      } else if (sortOrder === 'default') {
+        portfolioItems.sort((a, b) => {
+          const da = a.stock.addedAt || '';
+          const db = b.stock.addedAt || '';
+          return da.localeCompare(db);
+        });
       } else if (sortOrder === 'change-desc') {
         portfolioItems.sort((a, b) => {
           const changeA = a.quote ? a.quote.changePercent : 0;
           const changeB = b.quote ? b.quote.changePercent : 0;
           return changeB - changeA;
+        });
+      } else if (sortOrder === 'change-asc') {
+        portfolioItems.sort((a, b) => {
+          const changeA = a.quote ? a.quote.changePercent : 0;
+          const changeB = b.quote ? b.quote.changePercent : 0;
+          return changeA - changeB;
+        });
+      } else if (sortOrder === 'name-asc') {
+        portfolioItems.sort((a, b) => {
+          const symA = a.stock.symbol;
+          const symB = b.stock.symbol;
+          const aIsETF = symA.startsWith('00');
+          const bIsETF = symB.startsWith('00');
+          if (aIsETF && !bIsETF) return -1;
+          if (!aIsETF && bIsETF) return 1;
+          return symA.localeCompare(symB);
         });
       }
 
@@ -233,7 +266,8 @@
 
         const row = document.createElement('div');
         const directionClass = quote.change > 0 ? 'is-up' : (quote.change < 0 ? 'is-down' : '');
-        row.className = `stock-row ${directionClass} ${isExpanded ? 'is-expanded' : ''}`;
+        const soldOutClass = calc.totalShares === 0 ? 'is-sold-out' : '';
+        row.className = `stock-row ${directionClass} ${isExpanded ? 'is-expanded' : ''} ${soldOutClass}`;
         row.dataset.symbol = stock.symbol;
 
         const priceColorClass = quote.change > 0 ? 'stock-up' : (quote.change < 0 ? 'stock-down' : 'stock-flat');
@@ -715,6 +749,11 @@
         container.appendChild(row);
       });
 
+      // 啟用拖曳排序（僅「排序規則」模式）
+      if (sortOrder === 'custom') {
+        enableStockDragDrop(container);
+      }
+
     } catch (err) {
       console.error(err);
       container.innerHTML = `<div class="error-state">載入失敗: ${err.message}</div>`;
@@ -827,6 +866,69 @@
       console.error(err);
       tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:20px;color:#dc3545;">讀取失敗: ${err.message}</td></tr>`;
     }
+  }
+
+  function saveCustomOrder(container) {
+    const symbols = [];
+    container.querySelectorAll('.stock-row').forEach(row => {
+      if (row.dataset.symbol) symbols.push(row.dataset.symbol);
+    });
+    localStorage.setItem('stock_app_custom_order', JSON.stringify(symbols));
+    localStorage.setItem('stock_app_sort_order', 'custom');
+    window.stockSortOrder = 'custom';
+    const sel = document.getElementById('sort-stocks-select');
+    if (sel) sel.value = 'custom';
+  }
+
+  function enableStockDragDrop(container) {
+    const rows = container.querySelectorAll('.stock-row');
+    let dragSrcEl = null;
+
+    rows.forEach(row => {
+      row.setAttribute('draggable', 'true');
+
+      row.addEventListener('dragstart', (e) => {
+        dragSrcEl = row;
+        row.classList.add('is-dragging');
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', row.dataset.symbol);
+      });
+
+      row.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        const rect = row.getBoundingClientRect();
+        const midY = rect.top + rect.height / 2;
+        row.classList.toggle('drag-over-top', e.clientY < midY);
+        row.classList.toggle('drag-over-bottom', e.clientY >= midY);
+      });
+
+      row.addEventListener('dragleave', () => {
+        row.classList.remove('drag-over-top', 'drag-over-bottom');
+      });
+
+      row.addEventListener('drop', (e) => {
+        e.preventDefault();
+        if (dragSrcEl && dragSrcEl !== row) {
+          const rect = row.getBoundingClientRect();
+          const midY = rect.top + rect.height / 2;
+          if (e.clientY < midY) {
+            container.insertBefore(dragSrcEl, row);
+          } else {
+            container.insertBefore(dragSrcEl, row.nextSibling);
+          }
+          saveCustomOrder(container);
+        }
+        rows.forEach(r => r.classList.remove('drag-over-top', 'drag-over-bottom'));
+      });
+
+      row.addEventListener('dragend', () => {
+        row.classList.remove('is-dragging');
+      });
+      row.addEventListener('dragend', () => {
+        rows.forEach(r => r.classList.remove('drag-over-top', 'drag-over-bottom'));
+      });
+    });
   }
 
   window.StockPortfolio = {

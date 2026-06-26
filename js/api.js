@@ -76,9 +76,8 @@
   // ============================================================
   const PROXIES = [
     'https://api.allorigins.win/raw?url=',
-    'https://api.allorigins.win/get?url=',
-    'https://api.codetabs.com/v1/proxy/?quest=',
     'https://corsproxy.io/?',
+    'https://api.allorigins.win/get?url=',
     null
   ];
 
@@ -233,6 +232,95 @@
   }
 
   // ============================================================
+  // 富果 (Fugle) 行情 API — 第三備源
+  // ============================================================
+  const FUGLE_API_KEY = 'NmY0ZmNhYzYtM2JlMS00Yzc3LWE1YTAtN2M5NmRlNGUzYWMyIGIyNDUyODRjLTI2MWEtNDA5NS1hMDQ0LTJmNDEwNTU4ZDUwMw==';
+
+  async function fetchFugleQuoteDirect(code) {
+    const url = `https://api.fugle.tw/marketdata/v1.0/stock/intraday/quote/${code}?_=${Date.now()}`;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+    try {
+      const response = await fetch(url, {
+        headers: { 'X-API-KEY': FUGLE_API_KEY },
+        signal: controller.signal
+      });
+      clearTimeout(timeout);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = await response.json();
+      if (!data || !data.symbol) throw new Error('格式異常');
+      return data;
+    } catch (err) {
+      clearTimeout(timeout);
+      throw err;
+    }
+  }
+
+  async function fetchFugleQuoteViaProxy(code) {
+    const url = `https://api.fugle.tw/marketdata/v1.0/stock/intraday/quote/${code}?apiKey=${FUGLE_API_KEY}&_=${Date.now()}`;
+    return fetchWithProxyFallback(url, (data) => data && data.symbol);
+  }
+
+  async function fetchFugleQuotes(symbols) {
+    const results = {};
+    if (!symbols || symbols.length === 0) return results;
+
+    const fetchPromises = symbols.map(async (sym) => {
+      const code = sym.replace(/\.(TW|TWO)$/i, '');
+      let data = null;
+
+      // 策略 1：直連 (若 Fugle 支援 CORS)
+      try {
+        data = await fetchFugleQuoteDirect(code);
+      } catch (err) {
+        console.warn(`[Fugle] ${sym} 直連失敗，嘗試代理:`, err.message);
+      }
+
+      // 策略 2：透過 Proxy (API key 改為 query param)
+      if (!data) {
+        try {
+          data = await fetchFugleQuoteViaProxy(code);
+        } catch (err) {
+          console.warn(`[Fugle] ${sym} 代理查詢失敗:`, err.message);
+        }
+      }
+
+      if (!data) return;
+
+      const price = data.lastPrice || data.closePrice || 0;
+      const prevClose = data.previousClose || data.referencePrice || 0;
+      const change = data.change ?? (price - prevClose);
+      const changePercent = data.changePercent ?? (prevClose ? (change / prevClose) * 100 : 0);
+
+      const now = new Date();
+      const time = now.toLocaleTimeString('zh-TW', { hour12: false, hour: '2-digit', minute: '2-digit' });
+
+      const bestBid = data.bids && data.bids.length > 0 ? data.bids[0].price : 0;
+      const bestAsk = data.asks && data.asks.length > 0 ? data.asks[0].price : 0;
+
+      results[sym] = {
+        symbol: sym,
+        name: data.name || '',
+        price: price > 0 ? Number(price.toFixed(2)) : 0,
+        change: Number(change.toFixed(2)),
+        changePercent: Number(changePercent.toFixed(2)),
+        open: data.openPrice > 0 ? Number(data.openPrice.toFixed(2)) : '-',
+        prevClose: prevClose > 0 ? Number(prevClose.toFixed(2)) : '-',
+        high: data.highPrice > 0 ? Number(data.highPrice.toFixed(2)) : '-',
+        low: data.lowPrice > 0 ? Number(data.lowPrice.toFixed(2)) : '-',
+        volume: data.total?.tradeVolume ? Number((data.total.tradeVolume / 1000).toFixed(0)) : '-',
+        time: time,
+        bid: bestBid > 0 ? Number(bestBid.toFixed(2)) : '-',
+        ask: bestAsk > 0 ? Number(bestAsk.toFixed(2)) : '-',
+        source: 'Fugle'
+      };
+    });
+
+    await Promise.all(fetchPromises);
+    return results;
+  }
+
+  // ============================================================
   // 批次取得即時報價 (主入口)
   // ============================================================
   const SYMBOL_MAPPING = {
@@ -306,6 +394,10 @@
     }
   }
 
+  function isForceUpdateEnabled() {
+    return localStorage.getItem('stock_app_force_update') === 'true';
+  }
+
   async function fetchBatchQuotes(symbols, force = false) {
     if (!symbols || symbols.length === 0) return {};
 
@@ -316,7 +408,7 @@
     });
 
     const results = {};
-    const useCacheOnly = !force && !isMarketOpen();
+    const useCacheOnly = !force && !isMarketOpen() && !isForceUpdateEnabled();
     const lastCloseTime = getLastMarketCloseTime();
 
     const symbolsToFetch = [];
@@ -361,7 +453,25 @@
           }
         }
       } catch (e) {
-        console.warn('[fetchBatchQuotes] TWSE 查詢失敗，備援至 Yahoo:', e.message);
+        console.warn('[fetchBatchQuotes] TWSE 查詢失敗，備援至 Fugle:', e.message);
+      }
+
+      const fugleSymbols = symbolsToFetch.filter(sym => {
+        const isIndex = sym === 'T00.TW' || sym === 'O00.TWO' || sym === 'T13.TW' || sym === 'T17.TW';
+        return !isIndex && (!results[sym] || results[sym].price <= 0);
+      });
+
+      if (fugleSymbols.length > 0) {
+        try {
+          const fugleResults = await fetchFugleQuotes(fugleSymbols);
+          Object.keys(fugleResults).forEach(sym => {
+            if (fugleResults[sym] && fugleResults[sym].price > 0) {
+              results[sym] = fugleResults[sym];
+            }
+          });
+        } catch (e) {
+          console.warn('[fetchBatchQuotes] Fugle 查詢失敗，備援至 Yahoo:', e.message);
+        }
       }
 
       const yahooSymbols = symbolsToFetch.filter(sym => !results[sym] || results[sym].price <= 0);
@@ -473,6 +583,17 @@
       }
     } catch (e) {
       console.warn(`[fetchSingle] ${sym} TWSE 查詢失敗:`, e.message);
+    }
+
+    try {
+      const fugleResult = await fetchFugleQuotes([sym]);
+      if (fugleResult[sym] && fugleResult[sym].price > 0) {
+        fugleResult[sym].fetchTime = Date.now();
+        localStorage.setItem(`cached_quote_${sym}`, JSON.stringify(fugleResult[sym]));
+        return fugleResult[sym];
+      }
+    } catch (e) {
+      console.warn(`[fetchSingle] ${sym} Fugle 查詢失敗:`, e.message);
     }
 
     const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${sym}?interval=1d&range=2d&_=${Date.now()}`;
@@ -689,6 +810,7 @@
     searchStock,
     initializeLocalStockDictionary,
     fetchWithProxyFallback,
-    getStockDividendsWithCache
+    getStockDividendsWithCache,
+    fetchFugleQuotes
   };
 })(window);

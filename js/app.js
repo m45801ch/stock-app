@@ -711,20 +711,17 @@
       }
     });
 
-    window.stockSortOrder = 'default';
-    linkSortStocks?.addEventListener('click', () => {
-      if (window.stockSortOrder === 'default') {
-        window.stockSortOrder = 'code-asc';
-        alert('已切換為：依股票代號排序');
-      } else if (window.stockSortOrder === 'code-asc') {
-        window.stockSortOrder = 'change-desc';
-        alert('已切換為：依漲跌幅排序');
-      } else {
-        window.stockSortOrder = 'default';
-        alert('已恢復為：依加入時間排序');
-      }
-      refreshPortfolio();
-    });
+    const savedSort = localStorage.getItem('stock_app_sort_order') || 'default';
+    window.stockSortOrder = savedSort;
+    const sortSelect = document.getElementById('sort-stocks-select');
+    if (sortSelect) {
+      sortSelect.value = savedSort;
+      sortSelect.addEventListener('change', () => {
+        window.stockSortOrder = sortSelect.value;
+        localStorage.setItem('stock_app_sort_order', sortSelect.value);
+        refreshPortfolio();
+      });
+    }
 
     linkRenameGroup?.addEventListener('click', async () => {
       if (activeGroupId === 'default') return;
@@ -877,7 +874,6 @@
         cfUrl: cfUrlInput ? cfUrlInput.value : ''
       });
       alert('設定已儲存！');
-      closeModal();
     });
 
     syncGsheetUp?.addEventListener('click', async () => {
@@ -1666,7 +1662,7 @@
 
     if (selAutoRefresh) {
       const storedInterval = localStorage.getItem('stock_app_auto_refresh_interval') || '30000';
-      const validOptions = ['0', '30000', '60000', '300000'];
+      const validOptions = ['0', '60000', '180000', '300000'];
       let initialValue = storedInterval;
       if (!validOptions.includes(storedInterval) && storedInterval !== 'custom') {
         initialValue = 'custom';
@@ -1690,6 +1686,7 @@
         if (intervalMs <= 0) return;
 
         autoRefreshIntervalId = setInterval(async () => {
+          const forceUpdate = localStorage.getItem('stock_app_force_update') === 'true';
           const now = new Date();
           const parts = new Intl.DateTimeFormat('zh-TW', {
             timeZone: 'Asia/Taipei',
@@ -1709,8 +1706,8 @@
 
           const isMarketHours = (day >= 1 && day <= 5) && (timeVal >= 858 && timeVal <= 1335);
 
-          if (isMarketHours) {
-            console.log('交易時間內，自動重整報價中...');
+          if (isMarketHours || forceUpdate) {
+            console.log(isMarketHours ? '交易時間內，自動重整報價中...' : '盤後強制更新啟用，自動重整報價中...');
             await refreshPortfolio(true);
             await updateBroadMarketBadge(true);
           } else {
@@ -1745,6 +1742,14 @@
       if (initialValue !== '0') {
         toggleInterval();
       }
+    }
+
+    const chkForceUpdate = document.getElementById('chk-force-update');
+    if (chkForceUpdate) {
+      chkForceUpdate.checked = localStorage.getItem('stock_app_force_update') === 'true';
+      chkForceUpdate.addEventListener('change', () => {
+        localStorage.setItem('stock_app_force_update', chkForceUpdate.checked);
+      });
     }
   }
 

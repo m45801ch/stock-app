@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="./icons/icon-192.png">
   
   <!-- 樣式表 -->
-  <link rel="stylesheet" href="./css/index.css?v=20260622_1">
+  <link rel="stylesheet" href="./css/index.css?v=20260626_1">
 </head>
 <body>
 
@@ -107,7 +107,13 @@
       <div class="action-links-left">
         <button id="link-add-stock" class="action-link-btn">新增股票</button>
         <span class="action-link-separator">|</span>
-        <button id="link-sort-stocks" class="action-link-btn">排序股票</button>
+        <select id="sort-stocks-select" class="sort-select" title="排序方式">
+          <option value="custom">排序規則</option>
+          <option value="default">依加入時間</option>
+          <option value="change-desc">漲幅高→低</option>
+          <option value="change-asc">跌幅高→低</option>
+          <option value="name-asc">依股號排序(ETF優先)</option>
+        </select>
         <span class="action-link-separator">|</span>
         <button id="link-batch-delete-stocks" class="action-link-btn btn-link-danger">批量刪除個股</button>
         <span id="batch-stocks-toolbar" style="display: none; align-items: center; gap: 8px; margin-left: 8px;">
@@ -134,12 +140,16 @@
         <label style="display: inline-flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 600; color: var(--text-sub); cursor: pointer; user-select: none;">
           <select id="sel-auto-refresh" style="font-size:12px; padding:2px 4px; border:1px solid var(--border-color); border-radius:4px; background:var(--bg-color); color:var(--text-main); cursor:pointer;">
             <option value="0">關閉</option>
-            <option value="30000" selected>30s</option>
             <option value="60000">60s</option>
+            <option value="180000">180s</option>
             <option value="300000">300s</option>
             <option value="custom">自訂</option>
           </select>
           <span>自動重整</span>
+        </label>
+        <label style="display: inline-flex; align-items: center; gap: 3px; font-size: 12px; color: var(--text-sub); cursor: pointer; user-select: none;">
+          <input type="checkbox" id="chk-force-update">
+          <span>盤後強制更新</span>
         </label>
         <button id="btn-refresh-quotes" class="btn-pill" style="padding: 4px 10px; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;">
           🔄 立即更新
@@ -661,14 +671,14 @@
     </div>
   </div>
 
-  <script src="./js/stock_data.js?v=20260622_1"></script>
-  <script src="./js/utils.js?v=20260622_1"></script>
-  <script src="./js/db.js?v=20260622_1"></script>
-  <script src="./js/api.js?v=20260622_1"></script>
-  <script src="./js/sync.js?v=20260622_1"></script>
-  <script src="./js/search.js?v=20260622_1"></script>
-  <script src="./js/transaction.js?v=20260622_1"></script>
-  <script src="./js/portfolio.js?v=20260622_1"></script>
-  <script src="./js/app.js?v=20260622_1"></script>
+  <script src="./js/stock_data.js?v=20260626_1"></script>
+  <script src="./js/utils.js?v=20260626_1"></script>
+  <script src="./js/db.js?v=20260626_1"></script>
+  <script src="./js/api.js?v=20260626_1"></script>
+  <script src="./js/sync.js?v=20260626_1"></script>
+  <script src="./js/search.js?v=20260626_1"></script>
+  <script src="./js/transaction.js?v=20260626_1"></script>
+  <script src="./js/portfolio.js?v=20260626_1"></script>
+  <script src="./js/app.js?v=20260626_1"></script>
 </body>
 </html>

@@ -430,6 +430,35 @@ body {
   font-size: 12px;
 }
 
+.sort-select {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--primary-color);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 3px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.2s;
+}
+.sort-select:hover {
+  border-color: var(--primary-color);
+  background: rgba(140, 122, 230, 0.05);
+}
+.sort-select option {
+  background: #e8e8e8;
+  color: #333;
+}
+.sort-select option[value="change-desc"] {
+  color: #dc3545;
+  font-weight: 700;
+}
+.sort-select option[value="change-asc"] {
+  color: #2e8b57;
+  font-weight: 700;
+}
+
 /* 圓角按鈕 */
 .btn-pill {
   padding: 6px 14px;
@@ -3292,9 +3321,35 @@ body.force-mobile .group-management-btns button {
 .stock-row.is-down .stock-row-summary:hover {
   background: linear-gradient(90deg, var(--stock-down-bg), var(--surface-raised) 40%);
 }
+.stock-row.is-sold-out {
+  background: var(--stock-sold-out-bg, #2a2a2a);
+}
+.stock-row.is-sold-out .stock-row-summary {
+  background: transparent;
+}
+.stock-row.is-sold-out .stock-row-summary:hover {
+  background: rgba(255,255,255,0.03);
+}
 .stock-row.is-expanded {
   background: var(--card-bg);
   border-left: 3px solid var(--primary-color);
+}
+
+/* 拖曳排序 */
+.stock-row[draggable="true"] {
+  cursor: grab;
+}
+.stock-row[draggable="true"]:active {
+  cursor: grabbing;
+}
+.stock-row.is-dragging {
+  opacity: 0.4;
+}
+.stock-row.drag-over-top {
+  border-top: 2px solid var(--primary-color);
+}
+.stock-row.drag-over-bottom {
+  border-bottom: 2px solid var(--primary-color);
 }
 
 /* 展開按鈕動畫 */
@@ -3497,12 +3552,38 @@ body.force-mobile .group-management-btns button {
   background: rgba(243, 156, 18, 0.05);
 }
 
-/* ── 13. 設定按鈕強化 ── */
+/* ── 13. 按鈕 hover 強化 ── */
 #btn-settings {
-  transition: transform var(--transition-fast);
+  transition: all var(--transition-fast);
 }
 #btn-settings:hover {
-  transform: rotate(45deg);
+  background: var(--hover-bg);
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(243, 156, 18, 0.08);
+}
+#btn-settings svg {
+  transition: none;
+}
+
+.btn-secondary:hover {
+  background: var(--hover-bg);
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(243, 156, 18, 0.08);
+  transform: translateY(-1px);
+}
+.btn-secondary:active {
+  transform: translateY(0);
+}
+
+.btn-link:hover {
+  background: rgba(243, 156, 18, 0.12);
+  border-color: rgba(243, 156, 18, 0.35);
+  box-shadow: 0 0 0 3px rgba(243, 156, 18, 0.06);
+}
+
+.action-link-btn:hover {
+  background: var(--hover-bg);
+  color: var(--primary-color);
 }
 
 /* ── 14. 批次勾選樣式 ── */
