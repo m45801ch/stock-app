@@ -12,3 +12,13 @@ db.db
 *.njsproj
 *.sln
 *.sw?
+*.code-workspace
+
+# Local environment / config
+.env
+.env.*
+local_config.js
+
+# Skills
+skill_translations.json
+translate_skills.ps1

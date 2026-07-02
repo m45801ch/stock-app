@@ -2,7 +2,7 @@
   // ============================================================
   // JSONP 工具函式 — 完全繞過 CORS，file:// 協議也能用
   // ============================================================
-  function fetchJSONP(url, timeout = 10000) {
+  function fetchJSONP(url, timeout = 8000, callbackParam = 'callback') {
     return new Promise((resolve, reject) => {
       const cbName = 'stockCb_' + Math.random().toString(36).substr(2, 9);
       const script = document.createElement('script');
@@ -31,25 +31,63 @@
       };
 
       const sep = url.includes('?') ? '&' : '?';
-      script.src = `${url}${sep}callback=${cbName}`;
+      script.src = `${url}${sep}${callbackParam}=${cbName}`;
       document.head.appendChild(script);
     });
   }
 
   // ============================================================
+  // TWSE 直連 JSONP — 不需 CORS Proxy，更快更穩定
+  // ============================================================
+  async function fetchTWSEViaJSONP(exCh, timeout = 8000) {
+    const url = `https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=${exCh}&json=1&delay=0&_=${Date.now()}`;
+    const callbacks = ['jsoncallback', 'callback', 'jsonp'];
+    for (const cb of callbacks) {
+      try {
+        const data = await fetchJSONP(url, timeout, cb);
+        if (data && Array.isArray(data.msgArray)) {
+          return data;
+        }
+      } catch (err) {
+        console.warn(`[TWSE] JSONP (${cb}) 失敗:`, err.message);
+      }
+    }
+    throw new Error('所有 JSONP 回呼方式皆失敗');
+  }
+
+  // ============================================================
+  // 重試機制 — 指數退避
+  // ============================================================
+  async function withRetry(fn, maxRetries = 2, baseDelay = 1000) {
+    let lastError;
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        return await fn();
+      } catch (err) {
+        lastError = err;
+        if (attempt < maxRetries) {
+          const delay = baseDelay * Math.pow(2, attempt);
+          await new Promise(r => setTimeout(r, delay));
+        }
+      }
+    }
+    throw lastError;
+  }
+
   // ============================================================
   // CORS Proxy 備援
   // ============================================================
   const PROXIES = [
-    'https://api.allorigins.win/raw?url=',
-    'https://cors-proxy.htmldev.workers.dev/?url=', // 穩定的 Cloudflare Worker Proxy 備援
     'https://corsproxy.io/?',
+    'https://cors-proxy.htmldev.workers.dev/?url=',
+    'https://api.codetabs.com/v1/proxy?quest=',
+    'https://api.allorigins.win/raw?url=',
+    null
   ];
 
-  // Sticky proxy：記住上次成功的 proxy，下次排第一
   let _lastWorkingProxyIdx = 0;
 
-  async function fetchWithTimeout(url, timeout = 6000) { // 調大超時至 6 秒
+  async function fetchWithTimeout(url, timeout = 12000) {
     const controller = new AbortController();
     const id = setTimeout(() => controller.abort(), timeout);
     try {
@@ -62,62 +100,86 @@
     }
   }
 
-  async function fetchWithProxyFallback(targetUrl) {
-    // 把上次成功的 proxy 移到最前面
+  // 並行嘗試多個 Proxy，取最快成功者
+  async function fetchWithProxyFallback(targetUrl, validateFn = null) {
     const orderedProxies = [
       ...PROXIES.slice(_lastWorkingProxyIdx),
       ...PROXIES.slice(0, _lastWorkingProxyIdx)
     ];
 
-    let lastError = null;
-    for (const proxy of orderedProxies) {
-      const url = `${proxy}${encodeURIComponent(targetUrl)}`;
+    const tryProxy = async (proxy) => {
+      const url = proxy ? `${proxy}${encodeURIComponent(targetUrl)}` : targetUrl;
+      const response = await fetchWithTimeout(url, 12000);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const text = await response.text();
+      let parsed;
       try {
-        const response = await fetchWithTimeout(url);
-        if (response.ok) {
-          const text = await response.text();
-          let parsed;
-          try {
-            parsed = JSON.parse(text);
-          } catch (e) {
-            if (text.includes('"contents":')) {
-              const wrapped = JSON.parse(text);
-              parsed = JSON.parse(wrapped.contents);
-            } else throw e;
-          }
-          // 記住這次成功的 proxy index
-          _lastWorkingProxyIdx = PROXIES.indexOf(proxy);
-          return parsed;
+        parsed = JSON.parse(text);
+        if (parsed && typeof parsed === 'object' && 'contents' in parsed) {
+          parsed = JSON.parse(parsed.contents);
         }
-      } catch (err) {
-        console.warn(`[Proxy] 失敗: ${proxy}`, err.message);
-        lastError = err;
+      } catch (e) {
+        if (text.includes('"contents":')) {
+          const wrapped = JSON.parse(text);
+          parsed = JSON.parse(wrapped.contents);
+        } else throw e;
       }
+      if (parsed && parsed.error) {
+        throw new Error(`代理回傳錯誤: ${JSON.stringify(parsed.error)}`);
+      }
+      if (validateFn && !validateFn(parsed)) {
+        throw new Error('回傳資料格式不符合預期');
+      }
+      _lastWorkingProxyIdx = PROXIES.indexOf(proxy);
+      return parsed;
+    };
+
+    // 分批並行嘗試 (每次 3 個)
+    for (let i = 0; i < orderedProxies.length; i += 3) {
+      const batch = orderedProxies.slice(i, i + 3).map(p => tryProxy(p).catch(err => {
+        console.warn(`[Proxy] 失敗: ${p}`, err.message);
+        return null;
+      }));
+      const results = await Promise.all(batch);
+      const success = results.find(r => r !== null);
+      if (success) return success;
     }
-    throw lastError || new Error('所有代理連線失敗');
+    throw new Error('所有代理連線失敗');
   }
 
   async function fetchTWSEQuotes(normalizedSymbols) {
-    // 組合 ex_ch 字串：tse_2330.tw|otc_6547.tw
     const exChParts = normalizedSymbols.map(sym => {
       const code = sym.replace(/\.(TW|TWO)$/i, '');
       const isOTC = sym.toUpperCase().endsWith('.TWO');
       return `${isOTC ? 'otc' : 'tse'}_${code.toLowerCase()}.tw`;
     });
     const exCh = exChParts.join('|');
-    const url = `https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=${exCh}&json=1&delay=0&_=${Date.now()}`;
 
-    console.log(`[TWSE] 代理查詢中... ex_ch=${exCh}`);
+    console.log(`[TWSE] 查詢中... ex_ch=${exCh}`);
 
-    let data;
+    // 策略 1：直接 JSONP (最快，不需 Proxy)
     try {
-      data = await fetchWithProxyFallback(url);
+      const data = await withRetry(() => fetchTWSEViaJSONP(exCh, 8000), 1, 1000);
+      console.log(`[TWSE] JSONP 直連成功`);
+      return parseTWSEQuoteData(data, normalizedSymbols);
     } catch (e) {
-      console.warn('[TWSE] 代理請求失敗：', e.message);
+      console.warn('[TWSE] JSONP 直連失敗，切換至 Proxy:', e.message);
+    }
+
+    // 策略 2：透過 CORS Proxy
+    try {
+      const url = `https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=${exCh}&json=1&delay=0&_=${Date.now()}`;
+      const data = await fetchWithProxyFallback(url, (json) => json && Array.isArray(json.msgArray));
+      console.log(`[TWSE] Proxy 查詢成功`);
+      return parseTWSEQuoteData(data, normalizedSymbols);
+    } catch (e) {
+      console.warn('[TWSE] 全部方式失敗:', e.message);
       throw e;
     }
-    const results = {};
+  }
 
+  function parseTWSEQuoteData(data, normalizedSymbols) {
+    const results = {};
     if (!data || !Array.isArray(data.msgArray)) {
       console.warn('[TWSE] 回傳格式異常:', data);
       return results;
@@ -127,7 +189,6 @@
       const code = (item.c || '').toUpperCase();
       if (!code) return;
 
-      // 找回對應的完整 symbol（.TW 或 .TWO）
       const matchedSym = normalizedSymbols.find(s => {
         const cleanS = s.split('.')[0].toUpperCase();
         return cleanS === code;
@@ -136,8 +197,6 @@
 
       const symKey = matchedSym.toUpperCase();
 
-      // z = 當前成交價，y = 昨日收盤
-      // 盤中 z 有數字；收盤後 z 可能是 '-' → parseFloat('-') = NaN
       const z = parseFloat(item.z) || 0;
       const y = parseFloat(item.y) || 0;
       const openP = parseFloat(item.o) || 0;
@@ -148,7 +207,6 @@
       const bid = item.b ? (parseFloat(item.b.split('_')[0]) || 0) : 0;
       const ask = item.a ? (parseFloat(item.a.split('_')[0]) || 0) : 0;
 
-      // 收盤後 z=0, o=0 → 使用昨收 y 作為參考價
       const currentPrice = z > 0 ? z : (openP > 0 ? openP : y);
       const prevClose = y > 0 ? y : currentPrice;
       const change = (currentPrice > 0 && prevClose > 0) ? currentPrice - prevClose : 0;
@@ -157,6 +215,7 @@
 
       results[symKey] = {
         symbol: symKey,
+        name: item.n ? item.n.trim() : '',
         price: currentPrice > 0 ? Number(currentPrice.toFixed(2)) : (y > 0 ? Number(y.toFixed(2)) : 0),
         change: Number(change.toFixed(2)),
         changePercent: Number(changePercent.toFixed(2)),
@@ -171,21 +230,190 @@
         source: 'TWSE',
         offline: isOffline
       };
-
-      console.log(`[TWSE] ${symKey}: ${isOffline ? '(離線/收盤)' : ''} 現價=${currentPrice.toFixed(2)}, 昨收=${prevClose > 0 ? prevClose.toFixed(2) : 'N/A'}`);
     });
 
     return results;
   }
 
+  // ============================================================
+  // 富果 (Fugle) 行情 API — 第三備源
+  //   可透過 localStorage 設定 'fugle_api_key' 覆寫 API Key
+  //   預設為空，需自行向 Fugle 申請：
+  //   https://developer.fugle.tw/
+  // ============================================================
+  function getFugleApiKey() {
+    return localStorage.getItem('fugle_api_key') || 'NmY0ZmNhYzYtM2JlMS00Yzc3LWE1YTAtN2M5NmRlNGUzYWMyIGIyNDUyODRjLTI2MWEtNDA5NS1hMDQ0LTJmNDEwNTU4ZDUwMw==';
+  }
+
+  async function fetchFugleQuoteDirect(code) {
+    const apiKey = getFugleApiKey();
+    if (!apiKey) throw new Error('未設定 Fugle API Key');
+    const url = `https://api.fugle.tw/marketdata/v1.0/stock/intraday/quote/${code}?_=${Date.now()}`;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+    try {
+      const response = await fetch(url, {
+        headers: { 'X-API-KEY': apiKey },
+        signal: controller.signal
+      });
+      clearTimeout(timeout);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = await response.json();
+      if (!data || !data.symbol) throw new Error('格式異常');
+      return data;
+    } catch (err) {
+      clearTimeout(timeout);
+      throw err;
+    }
+  }
+
+  async function fetchFugleQuoteViaProxy(code) {
+    const apiKey = getFugleApiKey();
+    if (!apiKey) throw new Error('未設定 Fugle API Key');
+    const url = `https://api.fugle.tw/marketdata/v1.0/stock/intraday/quote/${code}?apiKey=${apiKey}&_=${Date.now()}`;
+    return fetchWithProxyFallback(url, (data) => data && data.symbol);
+  }
+
+  async function fetchFugleQuotes(symbols) {
+    const results = {};
+    if (!symbols || symbols.length === 0) return results;
+
+    const fetchPromises = symbols.map(async (sym) => {
+      const code = sym.replace(/\.(TW|TWO)$/i, '');
+      let data = null;
+
+      // 策略 1：直連 (若 Fugle 支援 CORS)
+      try {
+        data = await fetchFugleQuoteDirect(code);
+      } catch (err) {
+        console.warn(`[Fugle] ${sym} 直連失敗，嘗試代理:`, err.message);
+      }
+
+      // 策略 2：透過 Proxy (API key 改為 query param)
+      if (!data) {
+        try {
+          data = await fetchFugleQuoteViaProxy(code);
+        } catch (err) {
+          console.warn(`[Fugle] ${sym} 代理查詢失敗:`, err.message);
+        }
+      }
+
+      if (!data) return;
+
+      const price = data.lastPrice || data.closePrice || 0;
+      const prevClose = data.previousClose || data.referencePrice || 0;
+      const change = data.change ?? (price - prevClose);
+      const changePercent = data.changePercent ?? (prevClose ? (change / prevClose) * 100 : 0);
+
+      const now = new Date();
+      const time = now.toLocaleTimeString('zh-TW', { hour12: false, hour: '2-digit', minute: '2-digit' });
+
+      const bestBid = data.bids && data.bids.length > 0 ? data.bids[0].price : 0;
+      const bestAsk = data.asks && data.asks.length > 0 ? data.asks[0].price : 0;
+
+      results[sym] = {
+        symbol: sym,
+        name: data.name || '',
+        price: price > 0 ? Number(price.toFixed(2)) : 0,
+        change: Number(change.toFixed(2)),
+        changePercent: Number(changePercent.toFixed(2)),
+        open: data.openPrice > 0 ? Number(data.openPrice.toFixed(2)) : '-',
+        prevClose: prevClose > 0 ? Number(prevClose.toFixed(2)) : '-',
+        high: data.highPrice > 0 ? Number(data.highPrice.toFixed(2)) : '-',
+        low: data.lowPrice > 0 ? Number(data.lowPrice.toFixed(2)) : '-',
+        volume: data.total?.tradeVolume ? Number((data.total.tradeVolume / 1000).toFixed(0)) : '-',
+        time: time,
+        bid: bestBid > 0 ? Number(bestBid.toFixed(2)) : '-',
+        ask: bestAsk > 0 ? Number(bestAsk.toFixed(2)) : '-',
+        source: 'Fugle'
+      };
+    });
+
+    await Promise.all(fetchPromises);
+    return results;
+  }
 
   // ============================================================
-  // 批次取得即時報價 (主入口 - 支援本地與線上智慧模式 + 快取機制)
+  // 批次取得即時報價 (主入口)
   // ============================================================
-  async function fetchBatchQuotes(symbols) {
+  const SYMBOL_MAPPING = {
+    'T00.TW': '^TWII',
+    'O00.TWO': '^TWOII',
+    'T13.TW': '^TELI',
+    'T17.TW': '^TFNI'
+  };
+
+  function getTaipeiDate() {
+    const now = new Date();
+    const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+    return new Date(utc + (3600000 * 8));
+  }
+
+  function isMarketOpen() {
+    const now = new Date();
+    const parts = new Intl.DateTimeFormat('zh-TW', {
+      timeZone: 'Asia/Taipei',
+      hour: 'numeric',
+      minute: 'numeric',
+      hour12: false
+    }).formatToParts(now);
+
+    const getVal = (type) => parts.find(p => p.type === type).value;
+    const hour = parseInt(getVal('hour'), 10);
+    const minute = parseInt(getVal('minute'), 10);
+    const timeVal = hour * 100 + minute;
+
+    const tzDate = getTaipeiDate();
+    const day = tzDate.getDay();
+
+    return (day >= 1 && day <= 5) && (timeVal >= 858 && timeVal <= 1335);
+  }
+
+  function getLastMarketCloseTime() {
+    const now = new Date();
+    const parts = new Intl.DateTimeFormat('zh-TW', {
+      timeZone: 'Asia/Taipei',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: 'numeric',
+      minute: 'numeric',
+      second: 'numeric',
+      hour12: false
+    }).formatToParts(now);
+
+    const getVal = (type) => parts.find(p => p.type === type).value;
+    const year = getVal('year');
+    const month = getVal('month');
+    const day = getVal('day');
+
+    const tzDate = getTaipeiDate();
+    const weekday = tzDate.getDay();
+
+    const todayCloseTime = Date.parse(`${year}-${month}-${day}T13:35:00+08:00`);
+    const nowTime = now.getTime();
+
+    if (weekday === 0) {
+      return todayCloseTime - 2 * 24 * 3600 * 1000;
+    } else if (weekday === 6) {
+      return todayCloseTime - 1 * 24 * 3600 * 1000;
+    } else {
+      if (nowTime < todayCloseTime) {
+        const daysToSubtract = (weekday === 1) ? 3 : 1;
+        return todayCloseTime - daysToSubtract * 24 * 3600 * 1000;
+      } else {
+        return todayCloseTime;
+      }
+    }
+  }
+
+  function isForceUpdateEnabled() {
+    return localStorage.getItem('stock_app_force_update') === 'true';
+  }
+
+  async function fetchBatchQuotes(symbols, force = false) {
     if (!symbols || symbols.length === 0) return {};
 
-    // 標準化所有代號（補 .TW 後綴）
     const normalized = symbols.map(s => {
       let sym = s.toUpperCase().trim();
       if (!sym.includes('.')) sym = `${sym}.TW`;
@@ -193,92 +421,216 @@
     });
 
     const results = {};
+    const useCacheOnly = !force && !isMarketOpen() && !isForceUpdateEnabled();
+    const lastCloseTime = getLastMarketCloseTime();
 
-    // 1. 優先使用 TWSE 進行批次查詢 (經由 Proxy)
-    try {
-      const twseData = await fetchTWSEQuotes(normalized);
-      Object.assign(results, twseData);
-      console.log(`[TWSE] 批次共取得 ${Object.keys(twseData).length}/${normalized.length} 筆`);
-    } catch (err) {
-      console.warn('[TWSE] 批次查詢失敗，將進入 Yahoo 補救:', err.message);
-    }
-
-    // 2. 補救 missing 或價格為 0 的股票 (使用 Yahoo Finance API + Proxy)
-    const missing = normalized.filter(sym => !results[sym] || results[sym].price === 0 || results[sym].offline);
-    if (missing.length > 0) {
-      console.log(`[Yahoo 補救] ${missing.length} 檔:`, missing);
-      try {
-        const symbolString = missing.join(',');
-        const targetUrl = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${symbolString}&_=${Date.now()}`;
-        const data = await fetchWithProxyFallback(targetUrl);
-        const quoteList = data.quoteResponse?.result || [];
-
-        quoteList.forEach(q => {
-          const sym = q.symbol.toUpperCase();
-          const price = q.regularMarketPrice || q.regularMarketPreviousClose || q.chartPreviousClose || 0;
-          const change = q.regularMarketChange ?? 0;
-          const changePercent = q.regularMarketChangePercent ?? 0;
-          const openP = q.regularMarketOpen || 0;
-          const prevClose = q.regularMarketPreviousClose || 0;
-          const highP = q.regularMarketDayHigh || 0;
-          const lowP = q.regularMarketDayLow || 0;
-          const volume = q.regularMarketVolume ? q.regularMarketVolume / 1000 : 0; // 股轉張
-          const bid = q.bid || 0;
-          const ask = q.ask || 0;
-          
-          let time = '-';
-          if (q.regularMarketTime) {
-            const dateObj = new Date(q.regularMarketTime * 1000);
-            time = dateObj.toLocaleTimeString('zh-TW', { hour12: false, hour: '2-digit', minute: '2-digit' });
+    const symbolsToFetch = [];
+    normalized.forEach(sym => {
+      const cacheKey = `cached_quote_${sym}`;
+      const cachedData = localStorage.getItem(cacheKey);
+      if (useCacheOnly && cachedData) {
+        try {
+          const parsed = JSON.parse(cachedData);
+          if (parsed && parsed.price > 0 && parsed.fetchTime && parsed.fetchTime >= lastCloseTime) {
+            parsed.offline = true;
+            results[sym] = parsed;
+          } else {
+            symbolsToFetch.push(sym);
           }
+        } catch (e) {
+          symbolsToFetch.push(sym);
+        }
+      } else {
+        symbolsToFetch.push(sym);
+      }
+    });
 
-          results[sym] = {
-            symbol: sym,
-            price: Number(price.toFixed(2)),
-            change: Number(change.toFixed(2)),
-            changePercent: Number(changePercent.toFixed(2)),
-            open: openP > 0 ? Number(openP.toFixed(2)) : '-',
-            prevClose: prevClose > 0 ? Number(prevClose.toFixed(2)) : '-',
-            high: highP > 0 ? Number(highP.toFixed(2)) : '-',
-            low: lowP > 0 ? Number(lowP.toFixed(2)) : '-',
-            volume: volume >= 0 ? Number(volume.toFixed(0)) : '-',
-            time: time,
-            bid: bid > 0 ? Number(bid.toFixed(2)) : '-',
-            ask: ask > 0 ? Number(ask.toFixed(2)) : '-',
-            source: 'Yahoo'
-          };
+    if (symbolsToFetch.length > 0) {
+      // 先透過 TWSE 查詢所有代號（包含大盤指數），TWSE JSONP 也支援 tse_t00.tw 等指數
+      try {
+        const twseResults = await fetchTWSEQuotes(symbolsToFetch);
+        Object.keys(twseResults).forEach(sym => {
+          if (twseResults[sym] && twseResults[sym].price > 0) {
+            results[sym] = twseResults[sym];
+          }
         });
-      } catch (err) {
-        console.warn('[Yahoo 補救] 失敗，準備嘗試從本地快取中讀取備用資料:', err.message);
+
+        for (const sym of symbolsToFetch) {
+          if (results[sym] && !results[sym].name) {
+            try {
+              const dictStock = await window.StockDB.getStockFromDictionary(sym);
+              if (dictStock && dictStock.name) {
+                results[sym].name = dictStock.name;
+              }
+            } catch (e) {}
+          }
+        }
+      } catch (e) {
+        console.warn('[fetchBatchQuotes] TWSE 查詢失敗，備援至 Fugle:', e.message);
+      }
+
+      const fugleSymbols = symbolsToFetch.filter(sym => {
+        const isIndex = sym === 'T00.TW' || sym === 'O00.TWO' || sym === 'T13.TW' || sym === 'T17.TW';
+        return !isIndex && (!results[sym] || results[sym].price <= 0);
+      });
+
+      if (fugleSymbols.length > 0) {
+        try {
+          const fugleResults = await fetchFugleQuotes(fugleSymbols);
+          Object.keys(fugleResults).forEach(sym => {
+            if (fugleResults[sym] && fugleResults[sym].price > 0) {
+              results[sym] = fugleResults[sym];
+            }
+          });
+        } catch (e) {
+          console.warn('[fetchBatchQuotes] Fugle 查詢失敗，備援至 Yahoo:', e.message);
+        }
+      }
+
+      const yahooSymbols = symbolsToFetch.filter(sym => !results[sym] || results[sym].price <= 0);
+
+      if (yahooSymbols.length > 0) {
+        const fetchPromises = yahooSymbols.map(async (sym) => {
+          const yahooSym = SYMBOL_MAPPING[sym] || sym;
+          const tries = [
+            // 策略 A: Yahoo v8/chart API (新)
+            `https://query1.finance.yahoo.com/v8/finance/chart/${yahooSym}?interval=1d&range=2d&_=${Date.now()}`,
+            // 策略 B: Yahoo v7/quote API (舊版，更穩定)
+            `https://query2.finance.yahoo.com/v7/finance/quote?symbols=${yahooSym}&_=${Date.now()}`,
+            // 策略 C: 用另一個 host 的 v8/chart
+            `https://query2.finance.yahoo.com/v8/finance/chart/${yahooSym}?interval=1d&range=2d&_=${Date.now()}`
+          ];
+
+          for (const targetUrl of tries) {
+            try {
+              const data = await fetchWithProxyFallback(targetUrl, null);
+              // 嘗試解析 v8/chart 格式
+              if (data && data.chart && Array.isArray(data.chart.result) && data.chart.result.length > 0) {
+                const result = data.chart.result[0];
+                const meta = result.meta;
+                const price = meta.regularMarketPrice || meta.chartPreviousClose || 0;
+                const prevClose = meta.previousClose || meta.chartPreviousClose || price;
+                const change = price - prevClose;
+                const changePercent = prevClose ? (change / prevClose) * 100 : 0;
+
+                const now = new Date();
+                const time = now.toLocaleTimeString('zh-TW', { hour12: false, hour: '2-digit', minute: '2-digit' });
+
+                let displayName = '';
+                if (sym === 'T00.TW') displayName = '加權指數';
+                else if (sym === 'O00.TWO') displayName = '櫃買指數';
+                else if (sym === 'T13.TW') displayName = '電子指數';
+                else if (sym === 'T17.TW') displayName = '金融指數';
+                else {
+                  try {
+                    const dictStock = await window.StockDB.getStockFromDictionary(sym);
+                    if (dictStock && dictStock.name) {
+                      displayName = dictStock.name;
+                    }
+                  } catch (e) {}
+                }
+
+                const rawOpen = meta.regularMarketOpen || result.indicators?.quote?.[0]?.open?.[0];
+                const rawHigh = meta.regularMarketDayHigh || result.indicators?.quote?.[0]?.high?.[0];
+                const rawLow = meta.regularMarketDayLow || result.indicators?.quote?.[0]?.low?.[0];
+
+                results[sym] = {
+                  symbol: sym,
+                  name: displayName || results[sym]?.name || '',
+                  price: Number(price.toFixed(2)),
+                  change: Number(change.toFixed(2)),
+                  changePercent: Number(changePercent.toFixed(2)),
+                  open: (rawOpen && rawOpen > 0) ? Number(rawOpen.toFixed(2)) : '-',
+                  prevClose: prevClose ? Number(prevClose.toFixed(2)) : '-',
+                  high: (rawHigh && rawHigh > 0) ? Number(rawHigh.toFixed(2)) : '-',
+                  low: (rawLow && rawLow > 0) ? Number(rawLow.toFixed(2)) : '-',
+                  volume: meta.regularMarketVolume ? Number((meta.regularMarketVolume / 1000).toFixed(0)) : '-',
+                  time: time,
+                  bid: '-',
+                  ask: '-',
+                  source: 'Yahoo'
+                };
+                break; // 成功就跳出 tries 迴圈
+              }
+              // 嘗試解析 v7/quote 格式
+              if (data && data.quoteResponse && Array.isArray(data.quoteResponse.result) && data.quoteResponse.result.length > 0) {
+                const q = data.quoteResponse.result[0];
+                const price = q.regularMarketPrice || q.regularMarketPreviousClose || q.chartPreviousClose || 0;
+                const prevClose = q.regularMarketPreviousClose || 0;
+                const change = q.regularMarketChange ?? 0;
+                const changePercent = q.regularMarketChangePercent ?? 0;
+
+                const now = new Date();
+                const time = now.toLocaleTimeString('zh-TW', { hour12: false, hour: '2-digit', minute: '2-digit' });
+
+                let displayName = q.longName || q.shortName || '';
+                if (!displayName) {
+                  if (sym === 'T00.TW') displayName = '加權指數';
+                  else if (sym === 'O00.TWO') displayName = '櫃買指數';
+                  else if (sym === 'T13.TW') displayName = '電子指數';
+                  else if (sym === 'T17.TW') displayName = '金融指數';
+                  else {
+                    try {
+                      const dictStock = await window.StockDB.getStockFromDictionary(sym);
+                      if (dictStock && dictStock.name) displayName = dictStock.name;
+                    } catch (e) {}
+                  }
+                }
+
+                results[sym] = {
+                  symbol: sym,
+                  name: displayName || results[sym]?.name || '',
+                  price: Number(price.toFixed(2)),
+                  change: Number(change.toFixed(2)),
+                  changePercent: Number(changePercent.toFixed(2)),
+                  open: q.regularMarketOpen ? Number(q.regularMarketOpen.toFixed(2)) : '-',
+                  prevClose: prevClose ? Number(prevClose.toFixed(2)) : '-',
+                  high: q.regularMarketDayHigh ? Number(q.regularMarketDayHigh.toFixed(2)) : '-',
+                  low: q.regularMarketDayLow ? Number(q.regularMarketDayLow.toFixed(2)) : '-',
+                  volume: q.regularMarketVolume ? Number((q.regularMarketVolume / 1000).toFixed(0)) : '-',
+                  time: time,
+                  bid: q.bid ? Number(q.bid.toFixed(2)) : '-',
+                  ask: q.ask ? Number(q.ask.toFixed(2)) : '-',
+                  source: 'Yahoo'
+                };
+                break;
+              }
+            } catch (err) {
+              console.warn(`[Yahoo] 查詢 ${sym} 嘗試失敗:`, err.message.substring(0, 60));
+            }
+          }
+        });
+
+        await Promise.all(fetchPromises);
       }
     }
 
-    // 3. 快取備份機制：
-    // 對於成功獲取到有效價格的股票，存入 localStorage 備份
-    // 對於最終失敗或被標記離線的股票，從 localStorage 備份中讀取
     normalized.forEach(sym => {
       const q = results[sym];
       const cacheKey = `cached_quote_${sym}`;
       if (q && q.price > 0 && !q.offline && !q.error) {
-        // 存入快取
+        q.fetchTime = Date.now();
         localStorage.setItem(cacheKey, JSON.stringify(q));
-      } else {
-        // 從快取讀取
+      } else if (!force) {
         const cachedData = localStorage.getItem(cacheKey);
         if (cachedData) {
           try {
             const parsed = JSON.parse(cachedData);
-            parsed.offline = true; // 標記為離線快取資料
-            results[sym] = parsed;
-            console.log(`[快取備份] ${sym} 復原成功: 現價=${parsed.price}`);
+            parsed.offline = true;
+            if (!q || q.price <= 0 || q.error) {
+              results[sym] = parsed;
+              console.log(`[快取備份] ${sym} 復原成功: 現價=${parsed.price}`);
+            }
           } catch (e) {
             console.error(`[快取復原失敗] ${sym}:`, e);
           }
         }
+      } else {
+        // force 模式：清除過時快取
+        localStorage.removeItem(cacheKey);
       }
     });
 
-    // 4. 最後還是完全拿不到任何資料的股票，標記離線
     normalized.forEach(sym => {
       if (!results[sym]) {
         results[sym] = { symbol: sym, price: 0, change: 0, changePercent: 0, offline: true, error: true };
@@ -289,16 +641,16 @@
   }
 
   // ============================================================
-  // 單個股票查詢（Fetch + Proxy + 快取支援）
+  // 單個股票查詢
   // ============================================================
   async function fetchSingleStockQuote(symbol) {
     let sym = symbol.toUpperCase().trim();
     if (!sym.includes('.')) sym = `${sym}.TW`;
 
-    // 1. 先試 TWSE 經由 Proxy 查詢
     try {
       const r = await fetchTWSEQuotes([sym]);
       if (r[sym] && r[sym].price > 0) {
+        r[sym].fetchTime = Date.now();
         localStorage.setItem(`cached_quote_${sym}`, JSON.stringify(r[sym]));
         return r[sym];
       }
@@ -306,39 +658,81 @@
       console.warn(`[fetchSingle] ${sym} TWSE 查詢失敗:`, e.message);
     }
 
-    // 2. 備援使用 Yahoo Finance Chart 經由 Proxy 查詢
-    const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${sym}?interval=1d&range=2d&_=${Date.now()}`;
     try {
-      const data = await fetchWithProxyFallback(targetUrl);
-      const result = data.chart?.result?.[0];
-      if (result) {
-        const meta = result.meta;
-        const price = meta.regularMarketPrice || meta.chartPreviousClose || 0;
-        const prevClose = meta.previousClose || meta.chartPreviousClose || price;
-        const change = price - prevClose;
-        const changePercent = prevClose ? (change / prevClose) * 100 : 0;
-        
-        const quote = {
-          symbol: sym,
-          price: Number(price.toFixed(2)),
-          change: Number(change.toFixed(2)),
-          changePercent: Number(changePercent.toFixed(2)),
-          open: meta.regularMarketOpen ? Number(meta.regularMarketOpen.toFixed(2)) : '-',
-          prevClose: prevClose ? Number(prevClose.toFixed(2)) : '-',
-          high: meta.regularMarketDayHigh ? Number(meta.regularMarketDayHigh.toFixed(2)) : '-',
-          low: meta.regularMarketDayLow ? Number(meta.regularMarketDayLow.toFixed(2)) : '-',
-          volume: meta.regularMarketVolume ? Number((meta.regularMarketVolume / 1000).toFixed(0)) : '-',
-          time: meta.regularMarketTime ? new Date(meta.regularMarketTime * 1000).toLocaleTimeString('zh-TW', { hour12: false, hour: '2-digit', minute: '2-digit' }) : '-',
-          source: 'Yahoo-chart'
-        };
-        localStorage.setItem(`cached_quote_${sym}`, JSON.stringify(quote));
-        return quote;
+      const fugleResult = await fetchFugleQuotes([sym]);
+      if (fugleResult[sym] && fugleResult[sym].price > 0) {
+        fugleResult[sym].fetchTime = Date.now();
+        localStorage.setItem(`cached_quote_${sym}`, JSON.stringify(fugleResult[sym]));
+        return fugleResult[sym];
       }
-    } catch (error) {
-      console.error(`[fetchSingle] ${sym} 全部失敗，試圖從快取復原:`, error.message);
+    } catch (e) {
+      console.warn(`[fetchSingle] ${sym} Fugle 查詢失敗:`, e.message);
     }
 
-    // 3. 快取備用
+    const yahooTries = [
+      `https://query1.finance.yahoo.com/v8/finance/chart/${sym}?interval=1d&range=2d&_=${Date.now()}`,
+      `https://query2.finance.yahoo.com/v7/finance/quote?symbols=${sym}&_=${Date.now()}`,
+      `https://query2.finance.yahoo.com/v8/finance/chart/${sym}?interval=1d&range=2d&_=${Date.now()}`
+    ];
+
+    for (const targetUrl of yahooTries) {
+      try {
+        const data = await fetchWithProxyFallback(targetUrl, null);
+        if (data && data.chart && Array.isArray(data.chart.result) && data.chart.result.length > 0) {
+          const result = data.chart.result[0];
+          const meta = result.meta;
+          const price = meta.regularMarketPrice || meta.chartPreviousClose || 0;
+          const prevClose = meta.previousClose || meta.chartPreviousClose || price;
+          const change = price - prevClose;
+          const changePercent = prevClose ? (change / prevClose) * 100 : 0;
+          const rawOpen = meta.regularMarketOpen || result.indicators?.quote?.[0]?.open?.[0];
+          const rawHigh = meta.regularMarketDayHigh || result.indicators?.quote?.[0]?.high?.[0];
+          const rawLow = meta.regularMarketDayLow || result.indicators?.quote?.[0]?.low?.[0];
+          const quote = {
+            symbol: sym, price: Number(price.toFixed(2)), change: Number(change.toFixed(2)),
+            changePercent: Number(changePercent.toFixed(2)),
+            open: (rawOpen && rawOpen > 0) ? Number(rawOpen.toFixed(2)) : '-',
+            prevClose: prevClose ? Number(prevClose.toFixed(2)) : '-',
+            high: (rawHigh && rawHigh > 0) ? Number(rawHigh.toFixed(2)) : '-',
+            low: (rawLow && rawLow > 0) ? Number(rawLow.toFixed(2)) : '-',
+            volume: meta.regularMarketVolume ? Number((meta.regularMarketVolume / 1000).toFixed(0)) : '-',
+            time: new Date().toLocaleTimeString('zh-TW', { hour12: false, hour: '2-digit', minute: '2-digit' }),
+            bid: '-', ask: '-', source: 'Yahoo'
+          };
+          quote.fetchTime = Date.now();
+          localStorage.setItem(`cached_quote_${sym}`, JSON.stringify(quote));
+          return quote;
+        }
+        if (data && data.quoteResponse && Array.isArray(data.quoteResponse.result) && data.quoteResponse.result.length > 0) {
+          const q = data.quoteResponse.result[0];
+          const price = q.regularMarketPrice || q.regularMarketPreviousClose || q.chartPreviousClose || 0;
+          const prevClose = q.regularMarketPreviousClose || 0;
+          const change = q.regularMarketChange ?? 0;
+          const changePercent = q.regularMarketChangePercent ?? 0;
+          const quote = {
+            symbol: sym, price: Number(price.toFixed(2)), change: Number(change.toFixed(2)),
+            changePercent: Number(changePercent.toFixed(2)),
+            open: q.regularMarketOpen ? Number(q.regularMarketOpen.toFixed(2)) : '-',
+            prevClose: prevClose ? Number(prevClose.toFixed(2)) : '-',
+            high: q.regularMarketDayHigh ? Number(q.regularMarketDayHigh.toFixed(2)) : '-',
+            low: q.regularMarketDayLow ? Number(q.regularMarketDayLow.toFixed(2)) : '-',
+            volume: q.regularMarketVolume ? Number((q.regularMarketVolume / 1000).toFixed(0)) : '-',
+            time: new Date().toLocaleTimeString('zh-TW', { hour12: false, hour: '2-digit', minute: '2-digit' }),
+            bid: q.bid ? Number(q.bid.toFixed(2)) : '-',
+            ask: q.ask ? Number(q.ask.toFixed(2)) : '-',
+            source: 'Yahoo'
+          };
+          quote.fetchTime = Date.now();
+          localStorage.setItem(`cached_quote_${sym}`, JSON.stringify(quote));
+          return quote;
+        }
+      } catch (error) {
+        console.warn(`[fetchSingle] ${sym} Yahoo 嘗試失敗:`, error.message.substring(0, 60));
+      }
+    }
+
+    console.error(`[fetchSingle] ${sym} 全部失敗，試圖從快取復原`);
+
     const cachedData = localStorage.getItem(`cached_quote_${sym}`);
     if (cachedData) {
       try {
@@ -352,7 +746,7 @@
   }
 
   // ============================================================
-  // 搜尋功能（保持不變）
+  // 搜尋功能
   // ============================================================
   async function searchStock(keyword) {
     if (!keyword || keyword.trim() === '') return [];
@@ -370,7 +764,7 @@
       }
 
       const targetUrl = `https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(cleanKeyword)}&lang=zh-Hant-TW&quotesCount=10`;
-      const data = await fetchWithProxyFallback(targetUrl);
+      const data = await fetchWithProxyFallback(targetUrl, (json) => json && Array.isArray(json.quotes));
       const quotes = data.quotes || [];
       return quotes
         .filter(q => {
@@ -379,7 +773,7 @@
         })
         .map(q => ({
           symbol: q.symbol.toUpperCase(),
-          name: q.longname || q.shortname || cleanKeyword,
+          name: q.longName || q.shortName || q.longname || q.shortname || cleanKeyword,
           exchange: q.exchange,
           typeDisp: 'EQUITY'
         }));
@@ -419,11 +813,103 @@
     }
   }
 
+  // ============================================================
+  // 獲取歷史配息 (支援快取)
+  // ============================================================
+  async function fetchStockDividends(symbol) {
+    let sym = symbol.toUpperCase().trim();
+    if (!sym.includes('.')) sym = `${sym}.TW`;
+
+    const yahooHosts = ['query1.finance.yahoo.com', 'query2.finance.yahoo.com'];
+    const ranges = ['5y', '10y'];
+
+    console.log(`[API] 查詢配息歷史: ${sym}`);
+
+    for (const host of yahooHosts) {
+      for (const range of ranges) {
+        const targetUrl = `https://${host}/v8/finance/chart/${sym}?interval=1d&range=${range}&events=div&_=${Date.now()}`;
+        try {
+          const data = await fetchWithProxyFallback(targetUrl, (json) => json && json.chart && Array.isArray(json.chart.result));
+          const result = data.chart?.result?.[0];
+          const dividends = [];
+          if (result && result.events && result.events.dividends) {
+            const divObj = result.events.dividends;
+            Object.keys(divObj).forEach(key => {
+              const item = divObj[key];
+              if (item && item.amount !== undefined) {
+                const divDate = new Date(item.date * 1000);
+                const dateStr = divDate.toISOString().split('T')[0];
+                dividends.push({
+                  date: dateStr,
+                  amount: Number(item.amount) || 0
+                });
+              }
+            });
+          }
+          if (dividends.length > 0) {
+            dividends.sort((a, b) => new Date(a.date) - new Date(b.date));
+            console.log(`[API] ${sym} 獲取到 ${dividends.length} 筆配息紀錄 (${host}, range=${range})`);
+            return dividends;
+          }
+        } catch (e) {
+          console.warn(`[API] ${host} range=${range} 失敗:`, e.message);
+        }
+      }
+    }
+
+    console.warn(`[API] ${sym} 所有配息查詢方式皆失敗`);
+    return [];
+  }
+
+  async function getStockDividendsWithCache(symbol) {
+    let sym = symbol.toUpperCase().trim();
+    if (!sym.includes('.')) sym = `${sym}.TW`;
+
+    const indexSymbols = ['T00.TW', 'O00.TWO', 'T13.TW', 'T17.TW'];
+    if (indexSymbols.includes(sym)) {
+      return [];
+    }
+
+    const cacheKey = `cached_dividends_${sym}`;
+    const cached = localStorage.getItem(cacheKey);
+    if (cached) {
+      try {
+        const { data, timestamp } = JSON.parse(cached);
+        if (Date.now() - timestamp < 7 * 24 * 60 * 60 * 1000) {
+          return data;
+        }
+      } catch (e) {
+        console.warn(`[API] 解析配息快取失敗 ${sym}`, e);
+      }
+    }
+
+    try {
+      const data = await fetchStockDividends(sym);
+      localStorage.setItem(cacheKey, JSON.stringify({
+        data,
+        timestamp: Date.now()
+      }));
+      return data;
+    } catch (err) {
+      console.error(`[API] 獲取配息失敗 ${sym}`, err);
+      if (cached) {
+        try {
+          return JSON.parse(cached).data;
+        } catch (e) {}
+      }
+      return [];
+    }
+  }
+
   window.StockAPI = {
     fetchJSONP,
+    fetchTWSEViaJSONP,
     fetchStockQuote: fetchSingleStockQuote,
     fetchBatchQuotes,
     searchStock,
-    initializeLocalStockDictionary
+    initializeLocalStockDictionary,
+    fetchWithProxyFallback,
+    getStockDividendsWithCache,
+    fetchFugleQuotes
   };
 })(window);
