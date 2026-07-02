@@ -14,7 +14,7 @@
   
   /* 台灣股市習慣：紅漲綠跌 */
   --stock-up-color: #ff3838;     /* 鳳凰翼之火紅 */
-  --stock-down-color: #00ff88;   /* 廬山昇龍霸螢光翠綠 */
+  --stock-down-color: #00b870;   /* 翠竹青綠 */
   --stock-flat-color: #8fa59b;   /* 平盤 */
 
   --font-family: 'Inter', 'Noto Sans TC', sans-serif;
@@ -70,6 +70,11 @@ body {
   font-size: 20px;
   font-weight: 700;
   color: var(--text-main);
+  transition: opacity 0.2s;
+}
+
+.logo-text:hover {
+  opacity: 0.8;
 }
 
 /* 搜尋區塊 */
@@ -280,25 +285,33 @@ body {
 
 .group-management-btns {
   display: flex;
-  gap: 8px;
+  align-items: center;
+  gap: 2px;
   padding-bottom: 8px;
 }
 
 .btn-link {
   background: transparent;
   border: none;
-  color: #0056b3;
+  color: var(--primary-color);
   cursor: pointer;
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   text-decoration: none;
-  padding: 4px 8px;
-  border-radius: 4px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  border: 1px solid transparent;
+  transition: all var(--transition-fast);
+  letter-spacing: 0.2px;
 }
 
 .btn-link:hover {
-  background: rgba(0, 86, 179, 0.05);
-  text-decoration: underline;
+  background: rgba(243, 156, 18, 0.08);
+  border-color: rgba(243, 156, 18, 0.2);
+}
+
+.btn-link:active {
+  transform: scale(0.97);
 }
 
 .btn-link-danger {
@@ -375,9 +388,16 @@ body {
   box-shadow: var(--shadow-sm);
 }
 
-.action-links-left, .action-links-right {
+.action-links-left {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+}
+.action-links-right {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
   gap: 8px;
 }
 
@@ -408,6 +428,35 @@ body {
 .action-link-separator {
   color: var(--border-color);
   font-size: 12px;
+}
+
+.sort-select {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--primary-color);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 3px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.2s;
+}
+.sort-select:hover {
+  border-color: var(--primary-color);
+  background: rgba(140, 122, 230, 0.05);
+}
+.sort-select option {
+  background: #e8e8e8;
+  color: #333;
+}
+.sort-select option[value="change-desc"] {
+  color: #dc3545;
+  font-weight: 700;
+}
+.sort-select option[value="change-asc"] {
+  color: #2e8b57;
+  font-weight: 700;
 }
 
 /* 圓角按鈕 */
@@ -492,17 +541,20 @@ body {
 .update-time-text {
   font-size: 11px;
   color: var(--text-sub);
+  white-space: nowrap;
 }
 
 .summary-label {
   font-size: 13px;
   color: var(--text-sub);
   margin-bottom: 4px;
+  white-space: nowrap;
 }
 
 .summary-value {
   font-size: 20px;
   font-weight: 700;
+  white-space: nowrap;
 }
 
 .summary-value.valuation {
@@ -612,6 +664,16 @@ body {
 }
 
 /* 欄位微調 */
+.col-price,
+.col-shares,
+.col-avg-cost,
+.col-market-val,
+.col-realized,
+.col-unrealized,
+.col-tx-count {
+  padding-left: 12px;
+}
+
 .col-expand {
   display: flex;
   align-items: center;
@@ -975,12 +1037,55 @@ body {
     width: 100%;
   }
   .summary-board {
-    flex-wrap: wrap;
-    gap: 20px 30px;
-    padding: 16px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    padding: 10px 12px;
+  }
+  .summary-left {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px dashed var(--border-color);
+    padding-bottom: 6px;
+  }
+  .summary-left .summary-label {
+    margin-bottom: 0;
+  }
+  .summary-value.valuation {
+    font-size: 20px;
   }
   .summary-divider {
     display: none;
+  }
+  .summary-middle {
+    margin: 0;
+  }
+  .summary-pnl-row {
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .summary-pnl-item {
+    align-items: center;
+  }
+  .summary-pnl-label {
+    font-size: 11px;
+    margin-bottom: 0;
+  }
+  .summary-board .summary-value {
+    font-size: 15px;
+  }
+  .summary-right {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    border-top: 1px dashed var(--border-color);
+    padding-top: 6px;
+    margin-top: 2px;
+  }
+  .update-time-text {
+    font-size: 11px;
   }
   .sub-tabs-bar {
     flex-wrap: wrap;
@@ -1011,12 +1116,19 @@ body {
   }
 
   .action-links-right {
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 12px;
-    border-top: 1px solid var(--border-color);
-    padding-top: 10px;
-    width: 100%;
+    flex-wrap: nowrap !important;
+    justify-content: center !important;
+    gap: 6px !important;
+    border-top: 1px solid var(--border-color) !important;
+    padding-top: 10px !important;
+    width: 100% !important;
+  }
+
+  .action-links-right button,
+  .action-links-right label {
+    font-size: 11px !important;
+    padding: 4px 6px !important;
+    white-space: nowrap !important;
   }
 
   .action-link-separator,
@@ -1026,9 +1138,23 @@ body {
   }
 
   #broad-market-badge {
-    margin-left: 0 !important;
-    width: 100%;
-    justify-content: center;
+    margin: 0 auto !important;
+    width: auto !important;
+    max-width: 100% !important;
+    display: inline-flex !important;
+    justify-content: center !important;
+    gap: 4px !important;
+    padding: 3px 12px !important;
+    font-size: 12px !important;
+  }
+  #broad-market-badge span {
+    white-space: nowrap !important;
+    flex: 0 0 auto !important;
+    font-size: 12px !important;
+  }
+  #broad-market-badge #bm-badge-time {
+    font-size: 10.5px !important;
+    margin-left: 2px !important;
   }
   
   /* 行動裝置上將表格轉為卡片視覺 */
@@ -1036,26 +1162,38 @@ body {
     display: none;
   }
   .stock-row-summary {
-    grid-template-columns: 30px 1fr 1fr;
+    grid-template-columns: 30px 0.8fr 1.2fr;
     grid-template-areas: 
       "expand name price"
       "expand shares unrealized";
-    gap: 8px;
-    padding: 12px;
+    gap: 4px;
+    padding: 6px 10px;
+  }
+  .stock-row-summary .stock-name {
+    font-size: 14px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 130px;
+  }
+  .stock-row-summary .stock-symbol {
+    font-size: 11px;
   }
   .col-expand { grid-area: expand; }
   .col-info { grid-area: name; }
-  .col-price { grid-area: price; text-align: right; }
+  .col-price { grid-area: price; text-align: right; padding-left: 0; }
   .col-shares { 
     grid-area: shares; 
     font-size: 12px; 
     color: var(--text-sub);
     padding-top: 4px;
+    padding-left: 0;
   }
   .col-unrealized { 
     grid-area: unrealized; 
     text-align: right;
     padding-top: 4px;
+    padding-left: 0;
   }
   .col-avg-cost, .col-market-val, .col-realized, .col-tx-count, .col-actions {
     display: none; /* 行動版摘要隱藏較少用欄位，點展開才看得到 */
@@ -1294,11 +1432,16 @@ select:disabled {
   text-align: left;
 }
 
-/* 大盤區域（含左側卡片、右側走勢區與動作列大盤膠囊）的綠色文字改深以符合無障礙對比度 */
+/* 大盤區域顏色：紅漲綠跌 */
+.market-main-chart .stock-up,
+.index-card .stock-up,
+#broad-market-badge .stock-up {
+  color: var(--stock-up-color) !important;
+}
 .market-main-chart .stock-down,
 .index-card .stock-down,
 #broad-market-badge .stock-down {
-  color: #007a4b !important;
+  color: var(--stock-down-color) !important;
 }
 
 /* 右側走勢圖與大字數據 */
@@ -1451,6 +1594,7 @@ select:disabled {
 .detail-actions-group {
   display: flex;
   gap: 8px;
+  flex-wrap: nowrap;
 }
 
 .btn-detail-outline {
@@ -1463,6 +1607,7 @@ select:disabled {
   border-radius: 20px;
   cursor: pointer;
   transition: all 0.2s;
+  white-space: nowrap;
 }
 
 .btn-detail-solid {
@@ -1475,6 +1620,7 @@ select:disabled {
   border-radius: 20px;
   cursor: pointer;
   transition: all 0.2s;
+  white-space: nowrap;
 }
 
 .btn-detail-solid:hover {
@@ -1484,13 +1630,14 @@ select:disabled {
 .btn-detail-close {
   background: #f1f3f5;
   border: 1px solid #dee2e6;
-  color: var(--text-main);
+  color: #000000;
   font-size: 13px;
   font-weight: 600;
   padding: 6px 16px;
   border-radius: 20px;
   cursor: pointer;
   transition: all 0.2s;
+  white-space: nowrap;
 }
 
 .btn-detail-close:hover {
@@ -1540,12 +1687,14 @@ select:disabled {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
+  white-space: nowrap;
 }
 
 .status-stat-val {
   font-size: 18px;
   font-weight: 700;
   color: var(--text-main);
+  white-space: nowrap;
 }
 
 .status-stat-label {
@@ -1611,7 +1760,7 @@ select:disabled {
 .detail-chart-title {
   font-size: 15px;
   font-weight: 700;
-  color: var(--text-main);
+  color: #000000;
 }
 
 .detail-chart-subtitle {
@@ -1671,11 +1820,11 @@ select:disabled {
 }
 
 .dg-label {
-  color: var(--text-sub);
+  color: #000000;
 }
 
 .dg-val {
-  color: var(--text-main);
+  color: #000000;
   text-align: right;
   padding-right: 8px;
 }
@@ -1859,6 +2008,7 @@ select:disabled {
 #broad-market-badge span {
   color: #000000 !important;       /* 大盤文字改為深黑色 */
   font-weight: 700 !important;
+  white-space: nowrap !important;
 }
 
 /* ============================================================
@@ -1882,19 +2032,21 @@ body.force-mobile .stock-row-summary {
 
 body.force-mobile .col-expand { grid-area: expand !important; }
 body.force-mobile .col-info { grid-area: name !important; }
-body.force-mobile .col-price { grid-area: price !important; text-align: right !important; }
+body.force-mobile .col-price { grid-area: price !important; text-align: right !important; padding-left: 0 !important; }
 body.force-mobile .col-shares { 
   grid-area: shares !important; 
   font-size: 12px !important; 
   color: var(--text-sub) !important;
   padding-top: 4px !important;
   display: block !important;
+  padding-left: 0 !important;
 }
 body.force-mobile .col-unrealized { 
   grid-area: unrealized !important; 
   text-align: right !important;
   padding-top: 4px !important;
   display: block !important;
+  padding-left: 0 !important;
 }
 
 body.force-mobile .col-avg-cost, 
@@ -1920,12 +2072,19 @@ body.force-mobile .action-links-left {
 }
 
 body.force-mobile .action-links-right {
-  flex-wrap: wrap !important;
+  flex-wrap: nowrap !important;
   justify-content: center !important;
-  gap: 12px !important;
+  gap: 6px !important;
   border-top: 1px solid var(--border-color) !important;
   padding-top: 10px !important;
   width: 100% !important;
+}
+
+body.force-mobile .action-links-right button,
+body.force-mobile .action-links-right label {
+  font-size: 11px !important;
+  padding: 4px 6px !important;
+  white-space: nowrap !important;
 }
 
 body.force-mobile .action-link-separator,
@@ -1935,9 +2094,23 @@ body.force-mobile #bm-badge-sep {
 }
 
 body.force-mobile #broad-market-badge {
-  margin-left: 0 !important;
-  width: 100% !important;
+  margin: 0 auto !important;
+  width: auto !important;
+  max-width: 100% !important;
+  display: inline-flex !important;
   justify-content: center !important;
+  gap: 4px !important;
+  padding: 3px 12px !important;
+  font-size: 12px !important;
+}
+body.force-mobile #broad-market-badge span {
+  white-space: nowrap !important;
+  flex: 0 0 auto !important;
+  font-size: 12px !important;
+}
+body.force-mobile #broad-market-badge #bm-badge-time {
+  font-size: 10.5px !important;
+  margin-left: 2px !important;
 }
 
 body.force-mobile .sub-tabs-bar {
@@ -2147,6 +2320,14 @@ html, body {
     width: 100% !important;
     max-width: 100% !important;
     padding: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+  .pwa-banner {
+    order: -2 !important;
+  }
+  .summary-board {
+    order: -1 !important;
   }
 }
 
@@ -2157,6 +2338,14 @@ body.force-mobile .main-container {
   width: 100% !important;
   max-width: 100% !important;
   padding: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+body.force-mobile .pwa-banner {
+  order: -2 !important;
+}
+body.force-mobile .summary-board {
+  order: -1 !important;
 }
 
 /* 2. 資產總覽看板 (PNL) 行動端改為垂直分行顯示 (當日變動、已實現、未實現) */
@@ -2285,39 +2474,61 @@ body.force-mobile .summary-pnl-item .summary-value {
   /* 摘要資料分頁寬度與顯示設定 */
   .stock-table-header.view-summary {
     display: grid !important;
-    grid-template-columns: 40px 2fr 1fr 1fr 1.1fr 1fr 1fr 1fr 1fr 1fr 1fr 1.1fr 1.1fr 50px !important;
+    grid-template-columns: 40px 1.4fr 1fr 1fr 1.1fr 1fr 1fr 1fr 1fr 1fr 1fr 1.1fr 1.1fr 50px !important;
     min-width: 1200px !important;
   }
   .stock-row-summary.view-summary {
     display: grid !important;
-    grid-template-columns: 40px 2fr 1fr 1fr 1.1fr 1fr 1fr 1fr 1fr 1fr 1fr 1.1fr 1.1fr 50px !important;
+    grid-template-columns: 40px 1.4fr 1fr 1fr 1.1fr 1fr 1fr 1fr 1fr 1fr 1fr 1.1fr 1.1fr 50px !important;
     grid-template-areas: none !important;
     gap: 0 !important;
-    padding: 16px !important;
+    padding: 8px 16px !important;
     min-width: 1200px !important;
   }
   .stock-table-header.view-summary.batch-mode-active,
   .stock-row-summary.view-summary.batch-mode-active {
-    grid-template-columns: 40px 30px 2fr 1fr 1fr 1.1fr 1fr 1fr 1fr 1fr 1fr 1fr 1.1fr 1.1fr 50px !important;
+    grid-template-columns: 40px 30px 1.4fr 1fr 1fr 1.1fr 1fr 1fr 1fr 1fr 1fr 1fr 1.1fr 1.1fr 50px !important;
   }
 
   /* 持股明細分頁寬度與顯示設定 */
   .stock-table-header.view-holdings {
     display: grid !important;
-    grid-template-columns: 40px 2.2fr 1.5fr 1.2fr 1.5fr 1.5fr 1.5fr 1.8fr 1fr 50px !important;
+    grid-template-columns: 40px 1.6fr 1.3fr 0.8fr 1.1fr 1.1fr 1.1fr 1.6fr 0.9fr 50px !important;
     min-width: 950px !important;
   }
   .stock-row-summary.view-holdings {
     display: grid !important;
-    grid-template-columns: 40px 2.2fr 1.5fr 1.2fr 1.5fr 1.5fr 1.5fr 1.8fr 1fr 50px !important;
+    grid-template-columns: 40px 1.6fr 1.3fr 0.8fr 1.1fr 1.1fr 1.1fr 1.6fr 0.9fr 50px !important;
     grid-template-areas: none !important;
     gap: 0 !important;
-    padding: 16px !important;
+    padding: 8px 16px !important;
     min-width: 950px !important;
   }
   .stock-table-header.view-holdings.batch-mode-active,
   .stock-row-summary.view-holdings.batch-mode-active {
-    grid-template-columns: 40px 30px 2.2fr 1.5fr 1.2fr 1.5fr 1.5fr 1.5fr 1.8fr 1fr 50px !important;
+    grid-template-columns: 40px 30px 1.6fr 1.3fr 0.8fr 1.1fr 1.1fr 1.1fr 1.6fr 0.9fr 50px !important;
+  }
+  .stock-table-header.view-holdings > div,
+  .stock-row-summary.view-holdings > div {
+    text-align: left !important;
+  }
+  .stock-table-header.view-holdings .col-shares,
+  .stock-table-header.view-holdings .col-avg-cost,
+  .stock-table-header.view-holdings .col-market-val,
+  .stock-table-header.view-holdings .col-realized,
+  .stock-table-header.view-holdings .col-unrealized,
+  .stock-table-header.view-holdings .col-tx-count,
+  .stock-row-summary.view-holdings .col-shares,
+  .stock-row-summary.view-holdings .col-avg-cost,
+  .stock-row-summary.view-holdings .col-market-val,
+  .stock-row-summary.view-holdings .col-realized,
+  .stock-row-summary.view-holdings .col-unrealized,
+  .stock-row-summary.view-holdings .col-tx-count {
+    padding-left: 16px !important;
+  }
+  .stock-table-header.view-holdings .col-price,
+  .stock-row-summary.view-holdings .col-price {
+    padding-left: 20px !important;
   }
 
   /* 強制還原隱藏的欄位，呈現完整表格，並防範 grid-area 跑位 */
@@ -2385,38 +2596,60 @@ body.force-mobile .stock-row-summary.batch-mode-active .col-info {
 
 body.force-mobile .stock-table-header.view-summary {
   display: grid !important;
-  grid-template-columns: 40px 2fr 1fr 1fr 1.1fr 1fr 1fr 1fr 1fr 1fr 1fr 1.1fr 1.1fr 50px !important;
+  grid-template-columns: 40px 1.4fr 1fr 1fr 1.1fr 1fr 1fr 1fr 1fr 1fr 1fr 1.1fr 1.1fr 50px !important;
   min-width: 1200px !important;
 }
 body.force-mobile .stock-row-summary.view-summary {
   display: grid !important;
-  grid-template-columns: 40px 2fr 1fr 1fr 1.1fr 1fr 1fr 1fr 1fr 1fr 1fr 1.1fr 1.1fr 50px !important;
+  grid-template-columns: 40px 1.4fr 1fr 1fr 1.1fr 1fr 1fr 1fr 1fr 1fr 1fr 1.1fr 1.1fr 50px !important;
   grid-template-areas: none !important;
   gap: 0 !important;
-  padding: 16px !important;
+  padding: 8px 16px !important;
   min-width: 1200px !important;
 }
 body.force-mobile .stock-table-header.view-summary.batch-mode-active,
 body.force-mobile .stock-row-summary.view-summary.batch-mode-active {
-  grid-template-columns: 40px 30px 2fr 1fr 1fr 1.1fr 1fr 1fr 1fr 1fr 1fr 1fr 1.1fr 1.1fr 50px !important;
+  grid-template-columns: 40px 30px 1.4fr 1fr 1fr 1.1fr 1fr 1fr 1fr 1fr 1fr 1fr 1.1fr 1.1fr 50px !important;
 }
 
 body.force-mobile .stock-table-header.view-holdings {
   display: grid !important;
-  grid-template-columns: 40px 2.2fr 1.5fr 1.2fr 1.5fr 1.5fr 1.5fr 1.8fr 1fr 50px !important;
+  grid-template-columns: 40px 1.6fr 1.3fr 0.8fr 1.1fr 1.1fr 1.1fr 1.6fr 0.9fr 50px !important;
   min-width: 950px !important;
 }
 body.force-mobile .stock-row-summary.view-holdings {
   display: grid !important;
-  grid-template-columns: 40px 2.2fr 1.5fr 1.2fr 1.5fr 1.5fr 1.5fr 1.8fr 1fr 50px !important;
+  grid-template-columns: 40px 1.6fr 1.3fr 0.8fr 1.1fr 1.1fr 1.1fr 1.6fr 0.9fr 50px !important;
   grid-template-areas: none !important;
   gap: 0 !important;
-  padding: 16px !important;
+  padding: 8px 16px !important;
   min-width: 950px !important;
 }
 body.force-mobile .stock-table-header.view-holdings.batch-mode-active,
 body.force-mobile .stock-row-summary.view-holdings.batch-mode-active {
-  grid-template-columns: 40px 30px 2.2fr 1.5fr 1.2fr 1.5fr 1.5fr 1.5fr 1.8fr 1fr 50px !important;
+  grid-template-columns: 40px 30px 1.6fr 1.3fr 0.8fr 1.1fr 1.1fr 1.1fr 1.6fr 0.9fr 50px !important;
+}
+body.force-mobile .stock-table-header.view-holdings > div,
+body.force-mobile .stock-row-summary.view-holdings > div {
+  text-align: left !important;
+}
+body.force-mobile .stock-table-header.view-holdings .col-shares,
+body.force-mobile .stock-table-header.view-holdings .col-avg-cost,
+body.force-mobile .stock-table-header.view-holdings .col-market-val,
+body.force-mobile .stock-table-header.view-holdings .col-realized,
+body.force-mobile .stock-table-header.view-holdings .col-unrealized,
+body.force-mobile .stock-table-header.view-holdings .col-tx-count,
+body.force-mobile .stock-row-summary.view-holdings .col-shares,
+body.force-mobile .stock-row-summary.view-holdings .col-avg-cost,
+body.force-mobile .stock-row-summary.view-holdings .col-market-val,
+body.force-mobile .stock-row-summary.view-holdings .col-realized,
+body.force-mobile .stock-row-summary.view-holdings .col-unrealized,
+body.force-mobile .stock-row-summary.view-holdings .col-tx-count {
+  padding-left: 16px !important;
+}
+body.force-mobile .stock-table-header.view-holdings .col-price,
+body.force-mobile .stock-row-summary.view-holdings .col-price {
+  padding-left: 20px !important;
 }
 
 body.force-mobile .stock-table-header > div,
@@ -2608,5 +2841,820 @@ body.force-mobile .market-dt-item {
   align-items: center !important;
 }
 
+/* 強制手機版的資產總覽與自選股列表排版 */
+body.force-mobile {
+  padding: 8px !important;
+}
+body.force-mobile .app-header {
+  flex-direction: column !important;
+  gap: 12px !important;
+  padding: 12px !important;
+}
+body.force-mobile .search-container {
+  width: 100% !important;
+}
+body.force-mobile .summary-board {
+  flex-direction: column !important;
+  align-items: stretch !important;
+  gap: 8px !important;
+  padding: 10px 12px !important;
+}
+body.force-mobile .summary-left {
+  flex-direction: row !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  border-bottom: 1px dashed var(--border-color) !important;
+  padding-bottom: 6px !important;
+}
+body.force-mobile .summary-left .summary-label {
+  margin-bottom: 0 !important;
+}
+body.force-mobile .summary-value.valuation {
+  font-size: 20px !important;
+}
+body.force-mobile .summary-divider {
+  display: none !important;
+}
+body.force-mobile .summary-middle {
+  margin: 0 !important;
+}
+body.force-mobile .summary-pnl-row {
+  justify-content: space-between !important;
+  gap: 8px !important;
+}
+body.force-mobile .summary-pnl-item {
+  align-items: center !important;
+}
+body.force-mobile .summary-pnl-label {
+  font-size: 11px !important;
+  margin-bottom: 0 !important;
+}
+body.force-mobile .summary-board .summary-value {
+  font-size: 15px !important;
+}
+body.force-mobile .summary-right {
+  flex-direction: row !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  width: 100% !important;
+  border-top: 1px dashed var(--border-color) !important;
+  padding-top: 6px !important;
+  margin-top: 2px !important;
+}
+body.force-mobile .update-time-text {
+  font-size: 11px !important;
+}
+body.force-mobile .sub-tabs-bar {
+  flex-wrap: wrap !important;
+  gap: 6px !important;
+  justify-content: center !important;
+}
+body.force-mobile .sub-tab {
+  margin-right: 0 !important;
+  flex: 1 1 auto !important;
+  text-align: center !important;
+  font-size: 12px !important;
+  padding: 6px 12px !important;
+}
+body.force-mobile .action-links-bar {
+  flex-direction: column !important;
+  align-items: stretch !important;
+  gap: 12px !important;
+  padding: 12px !important;
+}
+body.force-mobile .action-links-left {
+  flex-wrap: wrap !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  width: 100% !important;
+}
+body.force-mobile .action-links-right {
+  flex-wrap: nowrap !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  border-top: 1px solid var(--border-color) !important;
+  padding-top: 10px !important;
+  width: 100% !important;
+}
+body.force-mobile .action-link-separator,
+body.force-mobile #batch-stocks-sep,
+body.force-mobile #bm-badge-sep {
+  display: none !important;
+}
+body.force-mobile #broad-market-badge {
+  margin: 0 auto !important;
+  width: auto !important;
+  max-width: 100% !important;
+  display: inline-flex !important;
+  justify-content: center !important;
+  gap: 4px !important;
+  padding: 3px 12px !important;
+  font-size: 12px !important;
+}
+body.force-mobile #broad-market-badge span {
+  white-space: nowrap !important;
+  flex: 0 0 auto !important;
+  font-size: 12px !important;
+}
+body.force-mobile #broad-market-badge #bm-badge-time {
+  font-size: 10.5px !important;
+  margin-left: 2px !important;
+}
+/* ============================================================
+   還原自選股大表格下所有子欄位的 Grid/Flex 配置，防止欄位重疊與移位
+   ============================================================ */
+@media (max-width: 768px) {
+  .stock-table-header.view-summary > div:not(.col-batch-check),
+  .stock-table-header.view-holdings > div:not(.col-batch-check),
+  .stock-row-summary.view-summary > div:not(.col-batch-check),
+  .stock-row-summary.view-holdings > div:not(.col-batch-check) {
+    display: block !important;
+    grid-area: auto !important;
+    font-size: inherit !important;
+    padding-top: 0 !important;
+  }
+  
+  .stock-row-summary.view-summary .col-shares,
+  .stock-row-summary.view-holdings .col-shares {
+    color: inherit !important;
+  }
+}
 
+body.force-mobile .stock-table-header.view-summary > div:not(.col-batch-check),
+body.force-mobile .stock-table-header.view-holdings > div:not(.col-batch-check),
+body.force-mobile .stock-row-summary.view-summary > div:not(.col-batch-check),
+body.force-mobile .stock-row-summary.view-holdings > div:not(.col-batch-check) {
+  display: block !important;
+  grid-area: auto !important;
+  font-size: inherit !important;
+  padding-top: 0 !important;
+}
 
+body.force-mobile .stock-row-summary.view-summary .col-shares,
+body.force-mobile .stock-row-summary.view-holdings .col-shares {
+  color: inherit !important;
+}/* ============================================================
+   手機版與強制手機版下的頂部 Header 控制區與群組 Tab 排版優化
+   ============================================================ */
+@media (max-width: 768px) {
+  /* 1. 右側控制區防折行與自適應換列 */
+  .header-actions {
+    width: 100% !important;
+    justify-content: center !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+  #db-status-badge,
+  #btn-settings {
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+  }
+  #btn-settings {
+    padding: 6px 12px !important;
+    font-size: 12px !important;
+  }
+
+  /* 2. 群組 Tab 區改為垂直分行且支持水平滑動，群組名絕不折行 */
+  .group-tabs-container {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+    padding: 8px 12px 8px 12px !important;
+  }
+  .tabs-wrapper {
+    display: flex !important;
+    overflow-x: auto !important;
+    width: 100% !important;
+    scrollbar-width: none !important;
+    gap: 6px !important;
+  }
+  .tabs-wrapper::-webkit-scrollbar {
+    display: none !important;
+  }
+  .group-tab {
+    white-space: nowrap !important;
+    flex: 0 0 auto !important;
+    padding: 8px 12px !important;
+    font-size: 13px !important;
+  }
+  .group-management-btns {
+    display: flex !important;
+    justify-content: flex-start !important;
+    padding-bottom: 4px !important;
+    margin-top: 2px !important;
+    width: 100% !important;
+    padding-left: 4px !important;
+    overflow-x: auto !important;
+    flex-wrap: nowrap !important;
+    scrollbar-width: none !important;
+    gap: 4px !important;
+  }
+  .group-management-btns::-webkit-scrollbar {
+    display: none !important;
+  }
+  .group-management-btns button {
+    white-space: nowrap !important;
+    font-size: 11px !important;
+    padding: 4px 10px !important;
+  }
+}
+
+body.force-mobile .header-actions {
+  width: 100% !important;
+  justify-content: center !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+}
+body.force-mobile #db-status-badge,
+body.force-mobile #btn-settings {
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+}
+body.force-mobile #btn-settings {
+  padding: 6px 12px !important;
+  font-size: 12px !important;
+}
+
+body.force-mobile .group-tabs-container {
+  flex-direction: column !important;
+  align-items: stretch !important;
+  gap: 8px !important;
+  padding: 8px 12px 8px 12px !important;
+}
+body.force-mobile .tabs-wrapper {
+  display: flex !important;
+  overflow-x: auto !important;
+  width: 100% !important;
+  scrollbar-width: none !important;
+  gap: 6px !important;
+}
+body.force-mobile .tabs-wrapper::-webkit-scrollbar {
+  display: none !important;
+}
+body.force-mobile .group-tab {
+  white-space: nowrap !important;
+  flex: 0 0 auto !important;
+  padding: 8px 12px !important;
+  font-size: 13px !important;
+}
+body.force-mobile .group-management-btns {
+  display: flex !important;
+  justify-content: flex-start !important;
+  padding-bottom: 4px !important;
+  margin-top: 2px !important;
+  width: 100% !important;
+  padding-left: 4px !important;
+  overflow-x: auto !important;
+  flex-wrap: nowrap !important;
+  scrollbar-width: none !important;
+  gap: 4px !important;
+}
+body.force-mobile .group-management-btns::-webkit-scrollbar {
+  display: none !important;
+}
+body.force-mobile .group-management-btns button {
+  white-space: nowrap !important;
+  font-size: 11px !important;
+  padding: 4px 10px !important;
+}
+
+/* 自訂標題樣式 */
+.logo-section {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-edit-title {
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  color: var(--text-muted, #888);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s, color 0.2s;
+  border-radius: 4px;
+}
+
+.btn-edit-title:hover {
+  color: var(--primary-color) !important;
+  background-color: rgba(243, 156, 18, 0.1);
+}
+
+.logo-section:hover .btn-edit-title {
+  opacity: 1;
+}
+
+.logo-input {
+  font-weight: 800;
+  font-size: 22px;
+  color: var(--primary-color);
+  background: rgba(243, 156, 18, 0.05);
+  border: none;
+  border-bottom: 2px solid var(--primary-color);
+  outline: none;
+  padding: 0 4px;
+  border-radius: 4px 4px 0 0;
+  font-family: inherit;
+  box-sizing: border-box;
+  transition: background-color 0.2s;
+}
+
+.logo-input:focus {
+  background: rgba(243, 156, 18, 0.1);
+}
+
+/* 行動裝置上無 hover，故將編輯按鈕透明度設為 0.6，點擊更友善 */
+@media (max-width: 768px) {
+  .btn-edit-title {
+    opacity: 0.6;
+  }
+}
+
+/* 配息與稅費切換按鈕狀態高亮 (緊鄰新增群組旁之 btn-link) */
+#btn-dividend-toggle.active,
+#btn-expense-toggle.active {
+  color: #000 !important;
+  font-weight: 700 !important;
+  background: var(--gold-grad) !important;
+  border-color: transparent !important;
+}
+#btn-dividend-toggle:not(.active),
+#btn-expense-toggle:not(.active) {
+  color: var(--text-sub) !important;
+  font-weight: 500 !important;
+  border-color: transparent !important;
+}
+#btn-dividend-toggle:not(.active):hover,
+#btn-expense-toggle:not(.active):hover {
+  color: var(--primary-color) !important;
+  background: rgba(243, 156, 18, 0.06) !important;
+  border-color: rgba(243, 156, 18, 0.15) !important;
+}
+
+/* ═══════════════════════════════════════════
+   UI/UX 強化 — 美化更新
+   ═══════════════════════════════════════════ */
+
+/* ── 1. 延伸色彩變數 ── */
+:root {
+  --surface-raised: #0f2b1f;
+  --surface-overlay: rgba(5, 20, 13, 0.85);
+  --text-muted: #6b8a7a;
+  --shadow-glow: 0 0 20px rgba(243, 156, 18, 0.08);
+  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.3);
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --stock-up-bg: rgba(255, 56, 56, 0.06);
+  --stock-down-bg: rgba(0, 184, 112, 0.06);
+  --gold-grad: linear-gradient(135deg, #f39c12, #f1c40f);
+}
+
+/* ── 2. 自訂捲軸 ── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-color);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-sub);
+}
+
+/* ── 3. 全域動畫與游標 ── */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-color) var(--bg-color);
+}
+.app-header,
+.summary-board,
+.portfolio-table,
+.action-links-bar,
+.group-tabs-container,
+.modal-content {
+  transition: box-shadow var(--transition-normal), border-color var(--transition-normal);
+}
+.summary-board:hover,
+.portfolio-table:hover,
+.action-links-bar:hover {
+  border-color: rgba(243, 156, 18, 0.15);
+  box-shadow: var(--shadow-card), var(--shadow-glow);
+}
+
+/* ── 4. 摘要看板強化 ── */
+.summary-board {
+  position: relative;
+  overflow: hidden;
+}
+.summary-board::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 3px;
+  height: 100%;
+  background: var(--gold-grad);
+  border-radius: 0 2px 2px 0;
+}
+.summary-value.valuation {
+  background: var(--gold-grad);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: -0.5px;
+}
+.summary-label {
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  font-size: 11px;
+}
+.summary-pnl-item .summary-pnl-label {
+  font-size: 11px;
+  letter-spacing: 0.3px;
+}
+.summary-pnl-item .stock-up { color: var(--stock-up-color); }
+.summary-pnl-item .stock-down { color: var(--stock-down-color); }
+.summary-divider {
+  background: linear-gradient(to bottom, transparent, var(--border-color), transparent);
+}
+
+/* ── 5. 股票列表強化 ── */
+.stock-row {
+  border-bottom: 1px solid rgba(26, 66, 46, 0.4);
+  transition: background var(--transition-fast);
+}
+.stock-row:last-child {
+  border-bottom: none;
+}
+.stock-row-summary {
+  position: relative;
+  border-left: 3px solid transparent;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+.stock-row-summary:hover {
+  background: var(--surface-raised);
+  border-left-color: var(--primary-color);
+}
+
+/* 漲跌背景微提示 (套用於 stock-row-summary 上層 .stock-row) */
+.stock-row.is-up .stock-row-summary {
+  background: linear-gradient(90deg, var(--stock-up-bg), transparent 30%);
+}
+.stock-row.is-down .stock-row-summary {
+  background: linear-gradient(90deg, var(--stock-down-bg), transparent 30%);
+}
+.stock-row.is-up .stock-row-summary:hover {
+  background: linear-gradient(90deg, var(--stock-up-bg), var(--surface-raised) 40%);
+}
+.stock-row.is-down .stock-row-summary:hover {
+  background: linear-gradient(90deg, var(--stock-down-bg), var(--surface-raised) 40%);
+}
+.stock-row.is-sold-out {
+  background: var(--stock-sold-out-bg, #2a2a2a);
+}
+.stock-row.is-sold-out .stock-row-summary {
+  background: transparent;
+}
+.stock-row.is-sold-out .stock-row-summary:hover {
+  background: rgba(255,255,255,0.03);
+}
+.stock-row.is-expanded {
+  background: var(--card-bg);
+  border-left: 3px solid var(--primary-color);
+}
+
+/* 拖曳排序 */
+.stock-row[draggable="true"] {
+  cursor: grab;
+}
+.stock-row[draggable="true"]:active {
+  cursor: grabbing;
+}
+.stock-row.is-dragging {
+  opacity: 0.4;
+}
+.stock-row.drag-over-top {
+  border-top: 2px solid var(--primary-color);
+}
+.stock-row.drag-over-bottom {
+  border-bottom: 2px solid var(--primary-color);
+}
+
+/* 展開按鈕動畫 */
+.col-expand {
+  transition: transform var(--transition-fast);
+}
+.is-expanded .col-expand {
+  transform: rotate(90deg);
+}
+
+/* 價格欄強化 */
+.col-price {
+  font-weight: 700;
+  letter-spacing: -0.3px;
+}
+.col-change.stock-up { color: var(--stock-up-color); font-weight: 600; }
+.col-change.stock-down { color: var(--stock-down-color); font-weight: 600; }
+.col-change-percent.stock-up { color: var(--stock-up-color); }
+.col-change-percent.stock-down { color: var(--stock-down-color); }
+
+/* ── 6. 群組分頁強化 ── */
+.group-tabs-container {
+  border-bottom: 1px solid var(--border-color);
+}
+.group-tab {
+  position: relative;
+  font-size: 14px;
+  padding: 10px 16px;
+  letter-spacing: 0.3px;
+}
+.group-tab.active {
+  color: var(--primary-color);
+  border-bottom-color: var(--primary-color);
+}
+.group-tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 20%;
+  width: 60%;
+  height: 3px;
+  background: var(--gold-grad);
+  border-radius: 2px;
+}
+
+/* ── 7. 子分頁強化 ── */
+.sub-tab {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-sub);
+  padding: 6px 18px;
+  font-size: 12px;
+  letter-spacing: 0.3px;
+}
+.sub-tab:hover {
+  background: var(--surface-raised);
+  border-color: var(--text-sub);
+}
+.sub-tab.active {
+  background: rgba(243, 156, 18, 0.1);
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+}
+
+/* ── 8. 按鈕強化 ── */
+.btn-pill {
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  transition: all var(--transition-fast);
+}
+.btn-pill:hover {
+  background: var(--gold-grad);
+  color: #000;
+  box-shadow: 0 2px 12px rgba(243, 156, 18, 0.25);
+  transform: translateY(-1px);
+}
+.btn-pill:active {
+  transform: translateY(0);
+}
+.btn-pill-vip {
+  transition: all var(--transition-fast);
+}
+.btn-pill-vip:hover {
+  opacity: 1;
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+}
+
+.action-link-btn {
+  font-size: 13px;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-fast);
+}
+.action-link-btn:hover {
+  background: var(--surface-raised);
+}
+
+/* ── 9. Modal 強化 ── */
+.modal-overlay {
+  background: var(--surface-overlay);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: opacity var(--transition-normal);
+}
+.modal-content {
+  animation: modalFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.92) translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+.modal-header {
+  background: var(--surface-raised);
+}
+.modal-footer {
+  background: var(--surface-raised);
+}
+.btn-primary {
+  background: var(--gold-grad);
+  color: #000;
+  font-weight: 700;
+  border: none;
+  padding: 10px 24px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+.btn-primary:hover {
+  box-shadow: 0 4px 16px rgba(243, 156, 18, 0.3);
+  transform: translateY(-1px);
+}
+.btn-primary:active {
+  transform: translateY(0);
+}
+.btn-secondary {
+  padding: 10px 24px;
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-sub);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+.btn-secondary:hover {
+  border-color: var(--text-main);
+  color: var(--text-main);
+  background: var(--hover-bg);
+}
+
+.form-control {
+  border-radius: var(--radius-sm);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+.form-control:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(243, 156, 18, 0.1);
+}
+
+/* ── 10. 表格表頭 ── */
+.stock-table-header {
+  background: var(--surface-raised);
+  border-bottom: 1px solid var(--border-color);
+  letter-spacing: 0.3px;
+}
+
+/* ── 11. 載入骨架動畫 ── */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.loading-shimmer {
+  background: linear-gradient(90deg, var(--card-bg) 25%, var(--surface-raised) 50%, var(--card-bg) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  border-radius: 4px;
+}
+
+/* ── 12. 大盤徽章強化 ── */
+#broad-market-badge {
+  background: var(--surface-raised);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 4px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+#broad-market-badge:hover {
+  border-color: var(--primary-color);
+  background: rgba(243, 156, 18, 0.05);
+}
+
+/* ── 13. 按鈕 hover 強化 ── */
+#btn-settings {
+  transition: all var(--transition-fast);
+}
+#btn-settings:hover {
+  background: var(--hover-bg);
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(243, 156, 18, 0.08);
+}
+#btn-settings svg {
+  transition: none;
+}
+
+.btn-secondary:hover {
+  background: var(--hover-bg);
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(243, 156, 18, 0.08);
+  transform: translateY(-1px);
+}
+.btn-secondary:active {
+  transform: translateY(0);
+}
+
+.btn-link:hover {
+  background: rgba(243, 156, 18, 0.12);
+  border-color: rgba(243, 156, 18, 0.35);
+  box-shadow: 0 0 0 3px rgba(243, 156, 18, 0.06);
+}
+
+.action-link-btn:hover {
+  background: var(--hover-bg);
+  color: var(--primary-color);
+}
+
+/* ── 14. 批次勾選樣式 ── */
+.col-batch-check input[type="checkbox"] {
+  accent-color: var(--primary-color);
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+/* ── 15. Select 下拉選單強化 ── */
+#sel-auto-refresh {
+  font-size: 12px;
+  padding: 4px 8px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+  color: var(--text-main);
+  cursor: pointer;
+  transition: border-color var(--transition-fast);
+}
+#sel-auto-refresh:hover {
+  border-color: var(--primary-color);
+}
+#sel-auto-refresh:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(243, 156, 18, 0.1);
+}
+
+/* ── 16. 響應式微調 ── */
+@media (max-width: 768px) {
+  .summary-board::before {
+    width: 100%;
+    height: 2px;
+    top: 0;
+    left: 0;
+    border-radius: 0 0 2px 2px;
+  }
+  .stock-row-summary {
+    border-left-width: 2px;
+  }
+  .stock-row-summary:hover {
+    border-left-color: transparent;
+  }
+  .stock-row.is-up .stock-row-summary,
+  .stock-row.is-down .stock-row-summary {
+    background: transparent;
+  }
+}
+
+/* ── 17. 強制手機模式微調 ── */
+body.force-mobile .stock-row-summary {
+  border-left: none;
+}
+body.force-mobile .stock-row-summary:hover {
+  border-left: none;
+}
+body.force-mobile .summary-board::before {
+  width: 100%;
+  height: 2px;
+  top: 0;
+  left: 0;
+  border-radius: 0 0 2px 2px;
+}
+
+/* ── 18. 編輯標題按鈕 ── */
+.btn-edit-title {
+  transition: opacity var(--transition-fast), transform var(--transition-fast);
+}
+.btn-edit-title:hover {
+  opacity: 1 !important;
+  transform: scale(1.1);
+}

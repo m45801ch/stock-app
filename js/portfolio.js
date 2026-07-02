@@ -2,7 +2,10 @@
   let expandedStocks = new Set();
   let expandedParentTxs = new Set(); // 記錄第二層折疊：哪些已平倉買入交易的「賣出子列」是展開狀態
 
-  async function renderPortfolio(groupId) {
+  async function renderPortfolio(groupId, force = false) {
+    if (!window.txDateSortOrder) {
+      window.txDateSortOrder = 'desc'; // 預設最近新增的排最前面
+    }
     const container = document.getElementById('portfolio-container');
     const summaryValuation = document.getElementById('summary-valuation');
     const summaryTodayChange = document.getElementById('summary-today-change');
@@ -30,7 +33,7 @@
       }
 
       const symbols = stocks.map(s => s.symbol);
-      const quotes = await window.StockAPI.fetchBatchQuotes(symbols);
+      const quotes = await window.StockAPI.fetchBatchQuotes(symbols, force);
 
       let portfolioItems = [];
       let totalMarketValue = 0;
@@ -38,17 +41,25 @@
       let totalTodayChange = 0;
       let totalRealizedPnL = 0;
       let totalUnrealizedPnL = 0;
+      let hasOffline = false;
 
-      // ── 並行取得所有股票的交易紀錄 + 字典名稱 ──
-      const [allTxsList, allDictStocks] = await Promise.all([
+      // 讀取 localStorage 儲存的配息模式狀態 (預設為 include 含配息)
+      const includeDividends = localStorage.getItem('dividend_mode') !== 'exclude';
+      // 讀取 localStorage 儲存的稅費模式狀態 (預設為 include 扣除稅費)
+      const includeExpenses = localStorage.getItem('expense_mode') !== 'exclude';
+
+      // ── 並行取得所有股票的交易紀錄 + 字典名稱 + 歷年配息 ──
+      const [allTxsList, allDictStocks, allDividends] = await Promise.all([
         Promise.all(stocks.map(s => window.StockDB.getTransactionsByStock(groupId, s.symbol))),
-        Promise.all(stocks.map(s => window.StockDB.getStockFromDictionary(s.symbol)))
+        Promise.all(stocks.map(s => window.StockDB.getStockFromDictionary(s.symbol))),
+        Promise.all(stocks.map(s => window.StockAPI.getStockDividendsWithCache(s.symbol)))
       ]);
 
       for (let i = 0; i < stocks.length; i++) {
         const stock = stocks[i];
         const txs = allTxsList[i];
         const dictStock = allDictStocks[i];
+        const dividends = allDividends[i] || [];
 
         let lookupKey = stock.symbol.toUpperCase();
         if (!lookupKey.includes('.')) {
@@ -56,7 +67,7 @@
         }
         let quote = quotes[lookupKey];
         if (!quote || quote.price === 0) {
-          const tempCalc = window.StockUtils.calculatePortfolio(txs, 0);
+          const tempCalc = window.StockUtils.calculatePortfolio(txs, 0, dividends, includeDividends, includeExpenses);
           quote = {
             symbol: stock.symbol,
             price: tempCalc.averageCost,
@@ -70,16 +81,32 @@
             time: '-',
             bid: '-',
             ask: '-',
-            isOffline: true
+            isOffline: true,
+            offline: true
           };
         }
 
-        const calc = window.StockUtils.calculatePortfolio(txs, quote.price);
+        if (quote && (quote.offline || quote.isOffline)) {
+          hasOffline = true;
+        }
+
+        const calc = window.StockUtils.calculatePortfolio(txs, quote.price, dividends, includeDividends, includeExpenses);
 
         // 中文名稱自動導正機制
         let displayName = stock.name;
         if (dictStock && dictStock.name) {
           displayName = dictStock.name;
+        } else if (quote && quote.name && quote.name !== '-' && quote.name !== stock.symbol) {
+          const hasChinese = (str) => /[\u4e00-\u9fa5]/.test(str);
+          const needsOverwrite = !displayName || 
+                                displayName === stock.symbol || 
+                                displayName.startsWith('台股 ') || 
+                                displayName === stock.symbol.split('.')[0] ||
+                                (!hasChinese(displayName) && hasChinese(quote.name));
+          if (needsOverwrite) {
+            displayName = quote.name;
+            window.StockDB.updateStockNameInGroup(groupId, stock.symbol, quote.name).catch(console.error);
+          }
         }
 
         portfolioItems.push({
@@ -102,19 +129,66 @@
 
       // 股票排序處理
       const sortOrder = window.stockSortOrder || 'default';
-      if (sortOrder === 'code-asc') {
-        portfolioItems.sort((a, b) => a.stock.symbol.localeCompare(b.stock.symbol));
+      if (sortOrder === 'custom') {
+        const customOrder = JSON.parse(localStorage.getItem('stock_app_custom_order') || '[]');
+        if (customOrder.length > 0) {
+          const orderMap = new Map(customOrder.map((s, i) => [s, i]));
+          portfolioItems.sort((a, b) => {
+            const ai = orderMap.get(a.stock.symbol);
+            const bi = orderMap.get(b.stock.symbol);
+            if (ai !== undefined && bi !== undefined) return ai - bi;
+            if (ai !== undefined) return -1;
+            if (bi !== undefined) return 1;
+            return 0;
+          });
+        }
+      } else if (sortOrder === 'default') {
+        portfolioItems.sort((a, b) => {
+          const da = a.stock.addedAt || '';
+          const db = b.stock.addedAt || '';
+          return da.localeCompare(db);
+        });
       } else if (sortOrder === 'change-desc') {
         portfolioItems.sort((a, b) => {
           const changeA = a.quote ? a.quote.changePercent : 0;
           const changeB = b.quote ? b.quote.changePercent : 0;
           return changeB - changeA;
         });
+      } else if (sortOrder === 'change-asc') {
+        portfolioItems.sort((a, b) => {
+          const changeA = a.quote ? a.quote.changePercent : 0;
+          const changeB = b.quote ? b.quote.changePercent : 0;
+          return changeA - changeB;
+        });
+      } else if (sortOrder === 'name-asc') {
+        portfolioItems.sort((a, b) => {
+          const symA = a.stock.symbol;
+          const symB = b.stock.symbol;
+          const aIsETF = symA.startsWith('00');
+          const bIsETF = symB.startsWith('00');
+          if (aIsETF && !bIsETF) return -1;
+          if (!aIsETF && bIsETF) return 1;
+          return symA.localeCompare(symB);
+        });
       }
 
       // --- 總覽面板渲染 ---
       if (summaryValuation) {
         summaryValuation.textContent = `$${window.StockUtils.formatNumber(totalMarketValue, 0)} TWD`;
+      }
+
+      const updateTimeEl = document.getElementById('portfolio-update-time');
+      if (updateTimeEl) {
+        const now = new Date();
+        const timeStr = now.toLocaleTimeString('zh-TW', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        updateTimeEl.textContent = `(更新時間: ${timeStr})${hasOffline ? ' (部分資料為快取)' : ''}`;
+      }
+
+      const summaryUpdateTime = document.getElementById('summary-update-time');
+      if (summaryUpdateTime) {
+        const now = new Date();
+        const timeStr = now.toLocaleTimeString('zh-TW', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        summaryUpdateTime.textContent = `${timeStr} 更新${hasOffline ? ' (含快取)' : ''}`;
       }
 
       if (summaryTodayChange) {
@@ -191,7 +265,9 @@
         const isExpanded = expandedStocks.has(stock.symbol);
 
         const row = document.createElement('div');
-        row.className = `stock-row ${isExpanded ? 'is-expanded' : ''}`;
+        const directionClass = quote.change > 0 ? 'is-up' : (quote.change < 0 ? 'is-down' : '');
+        const soldOutClass = calc.totalShares === 0 ? 'is-sold-out' : '';
+        row.className = `stock-row ${directionClass} ${isExpanded ? 'is-expanded' : ''} ${soldOutClass}`;
         row.dataset.symbol = stock.symbol;
 
         const priceColorClass = quote.change > 0 ? 'stock-up' : (quote.change < 0 ? 'stock-down' : 'stock-flat');
@@ -212,6 +288,17 @@
         const parentTxs = txs.filter(t => !t.parentId);
         const childTxsMap = new Map();
         
+        // 交易歷史日期排序 (升序/降序)
+        const txSortOrder = window.txDateSortOrder || 'desc';
+        parentTxs.sort((a, b) => {
+          const dateA = new Date(a.date);
+          const dateB = new Date(b.date);
+          if (dateA - dateB === 0) {
+            return txSortOrder === 'asc' ? a.id - b.id : b.id - a.id;
+          }
+          return txSortOrder === 'asc' ? dateA - dateB : dateB - dateA;
+        });
+        
         txs.forEach(t => {
           if (t.parentId) {
             if (!childTxsMap.has(t.parentId)) {
@@ -230,6 +317,7 @@
             
             // A. 渲染父交易 (買入列)
             const parentVal = parentTx.shares * parentTx.price;
+            const currentMarketVal = parentTx.shares * quote.price;
             const isBuy = parentTx.type === 'buy';
             
             let typeCellHTML = '';
@@ -282,6 +370,7 @@
                   </div>
                 </td>
                 <td>${window.StockUtils.formatNumber(parentVal, 2)}</td>
+                <td>${quote.price > 0 ? window.StockUtils.formatNumber(currentMarketVal, 2) : '-'}</td>
                 <td>
                   ${deleteCellHTML}
                 </td>
@@ -290,6 +379,7 @@
 
             children.forEach(childTx => {
               const childVal = childTx.shares * childTx.price;
+              const currentMarketValChild = childTx.shares * quote.price;
               
               txRowsHTML += `
                 <tr class="tx-child-row" data-id="${childTx.id}" data-parent-id="${parentTx.id}" style="display: ${isChildExpanded ? 'table-row' : 'none'};">
@@ -316,6 +406,7 @@
                     </div>
                   </td>
                   <td>${window.StockUtils.formatNumber(childVal, 2)}</td>
+                  <td>${quote.price > 0 ? window.StockUtils.formatNumber(currentMarketValChild, 2) : '-'}</td>
                   <td>
                     <button class="delete-tx-btn" data-id="${childTx.id}" title="刪除此筆賣出，恢復未賣出狀態">刪除</button>
                   </td>
@@ -356,7 +447,7 @@
             <div style="text-align: right;">${formatQuoteVal(quote.high)}</div>
             <div style="text-align: right;">${formatQuoteVal(quote.low)}</div>
             <div style="text-align: right;">${formatQuoteVal(quote.volume, 0)}</div>
-            <div style="text-align: right; font-size: 12px; color: var(--text-sub);">${quote.time || '-'}</div>
+            <div style="text-align: right; font-size: 12px; color: var(--text-sub);">${quote.time || '-'}${quote.offline ? ' (快取)' : ''}</div>
             <div class="col-actions">
               <button class="delete-stock-btn" title="從自選股移除">✕</button>
             </div>
@@ -400,7 +491,7 @@
         detailsDiv.innerHTML = `
           <div class="details-inner">
             <div class="details-header">
-              <h3>歷史交易明細</h3>
+              <h3>歷史交易明細 <span style="font-size:13px;font-weight:500;color:var(--text-sub);">(${txs.length} 筆)</span></h3>
               <div style="display:flex;gap:8px;align-items:center;">
                 <div class="batch-toolbar" style="display:none;align-items:center;gap:8px;">
                   <span class="batch-count-label" style="font-size:13px;color:var(--text-sub);">已選 0 筆</span>
@@ -420,11 +511,14 @@
                 <thead>
                   <tr>
                     <th class="tx-check-cell"><input type="checkbox" class="tx-select-all" title="全選"></th>
-                    <th>交易日期</th>
+                    <th class="sortable-tx-date" style="cursor: pointer; user-select: none; color: var(--primary-color);" title="點擊切換日期排序">
+                      交易日期 ${window.txDateSortOrder === 'asc' ? '▲' : '▼'}
+                    </th>
                     <th>買入/賣出</th>
                     <th>交易股數</th>
                     <th>交易股價</th>
-                    <th>市值</th>
+                    <th>交易金額</th>
+                    <th>目前市值</th>
                     <th>操作</th>
                   </tr>
                 </thead>
@@ -436,6 +530,16 @@
           </div>
         `;
         row.appendChild(detailsDiv);
+
+        // 綁定交易日期表頭排序點擊事件
+        const sortHeader = detailsDiv.querySelector('.sortable-tx-date');
+        if (sortHeader) {
+          sortHeader.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            window.txDateSortOrder = window.txDateSortOrder === 'asc' ? 'desc' : 'asc';
+            await renderPortfolio(groupId);
+          });
+        }
 
         // 綁定第一層展開收合事件 (股票)
         summaryRow.addEventListener('click', (e) => {
@@ -645,6 +749,11 @@
         container.appendChild(row);
       });
 
+      // 啟用拖曳排序（僅「排序規則」模式）
+      if (sortOrder === 'custom') {
+        enableStockDragDrop(container);
+      }
+
     } catch (err) {
       console.error(err);
       container.innerHTML = `<div class="error-state">載入失敗: ${err.message}</div>`;
@@ -757,6 +866,69 @@
       console.error(err);
       tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:20px;color:#dc3545;">讀取失敗: ${err.message}</td></tr>`;
     }
+  }
+
+  function saveCustomOrder(container) {
+    const symbols = [];
+    container.querySelectorAll('.stock-row').forEach(row => {
+      if (row.dataset.symbol) symbols.push(row.dataset.symbol);
+    });
+    localStorage.setItem('stock_app_custom_order', JSON.stringify(symbols));
+    localStorage.setItem('stock_app_sort_order', 'custom');
+    window.stockSortOrder = 'custom';
+    const sel = document.getElementById('sort-stocks-select');
+    if (sel) sel.value = 'custom';
+  }
+
+  function enableStockDragDrop(container) {
+    const rows = container.querySelectorAll('.stock-row');
+    let dragSrcEl = null;
+
+    rows.forEach(row => {
+      row.setAttribute('draggable', 'true');
+
+      row.addEventListener('dragstart', (e) => {
+        dragSrcEl = row;
+        row.classList.add('is-dragging');
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', row.dataset.symbol);
+      });
+
+      row.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        const rect = row.getBoundingClientRect();
+        const midY = rect.top + rect.height / 2;
+        row.classList.toggle('drag-over-top', e.clientY < midY);
+        row.classList.toggle('drag-over-bottom', e.clientY >= midY);
+      });
+
+      row.addEventListener('dragleave', () => {
+        row.classList.remove('drag-over-top', 'drag-over-bottom');
+      });
+
+      row.addEventListener('drop', (e) => {
+        e.preventDefault();
+        if (dragSrcEl && dragSrcEl !== row) {
+          const rect = row.getBoundingClientRect();
+          const midY = rect.top + rect.height / 2;
+          if (e.clientY < midY) {
+            container.insertBefore(dragSrcEl, row);
+          } else {
+            container.insertBefore(dragSrcEl, row.nextSibling);
+          }
+          saveCustomOrder(container);
+        }
+        rows.forEach(r => r.classList.remove('drag-over-top', 'drag-over-bottom'));
+      });
+
+      row.addEventListener('dragend', () => {
+        row.classList.remove('is-dragging');
+      });
+      row.addEventListener('dragend', () => {
+        rows.forEach(r => r.classList.remove('drag-over-top', 'drag-over-bottom'));
+      });
+    });
   }
 
   window.StockPortfolio = {

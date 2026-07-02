@@ -172,6 +172,28 @@
     });
   }
 
+  function updateStockNameInGroup(groupId, symbol, newName) {
+    return new Promise(async (resolve, reject) => {
+      try {
+        const store = await getStore('stocks', 'readwrite');
+        const index = store.index('group_symbol');
+        const getReq = index.get([groupId, symbol]);
+        getReq.onsuccess = () => {
+          const data = getReq.result;
+          if (data) {
+            data.name = newName;
+            const putReq = store.put(data);
+            putReq.onsuccess = () => resolve(data);
+            putReq.onerror = () => reject(putReq.error);
+          } else {
+            resolve(null);
+          }
+        };
+        getReq.onerror = () => reject(getReq.error);
+      } catch (e) { reject(e); }
+    });
+  }
+
   function deleteStockFromGroup(groupId, symbol) {
     return new Promise(async (resolve, reject) => {
       try {
@@ -641,6 +663,7 @@
     deleteGroup,
     getStocksByGroup,
     addStockToGroup,
+    updateStockNameInGroup,
     deleteStockFromGroup,
     batchDeleteStocksFromGroup,
     getTransactionsByStock,
