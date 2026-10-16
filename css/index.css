@@ -397,7 +397,8 @@ body {
 .action-links-right {
   display: flex;
   align-items: center;
-  flex-shrink: 0;
+  flex-shrink: 1;
+  min-width: 0;
   gap: 8px;
 }
 
@@ -1136,12 +1137,14 @@ body {
   }
 
   .action-links-right {
-    flex-wrap: nowrap !important;
+    flex-wrap: wrap !important;
     justify-content: center !important;
-    gap: 6px !important;
+    gap: 6px 8px !important;
     border-top: 1px solid var(--border-color) !important;
     padding-top: 10px !important;
     width: 100% !important;
+    min-width: 0 !important;
+    overflow-wrap: break-word;
   }
 
   .action-links-right button,
@@ -1149,6 +1152,8 @@ body {
     font-size: 11px !important;
     padding: 4px 6px !important;
     white-space: nowrap !important;
+    flex: 0 1 auto !important;
+    min-width: 0 !important;
   }
 
   .action-link-separator,
@@ -2092,12 +2097,13 @@ body.force-mobile .action-links-left {
 }
 
 body.force-mobile .action-links-right {
-  flex-wrap: nowrap !important;
+  flex-wrap: wrap !important;
   justify-content: center !important;
-  gap: 6px !important;
+  gap: 6px 8px !important;
   border-top: 1px solid var(--border-color) !important;
   padding-top: 10px !important;
   width: 100% !important;
+  min-width: 0 !important;
 }
 
 body.force-mobile .action-links-right button,
@@ -2105,6 +2111,8 @@ body.force-mobile .action-links-right label {
   font-size: 11px !important;
   padding: 4px 6px !important;
   white-space: nowrap !important;
+  flex: 0 1 auto !important;
+  min-width: 0 !important;
 }
 
 body.force-mobile .action-link-separator,
@@ -3008,12 +3016,13 @@ body.force-mobile .action-links-left {
   width: 100% !important;
 }
 body.force-mobile .action-links-right {
-  flex-wrap: nowrap !important;
+  flex-wrap: wrap !important;
   justify-content: center !important;
-  gap: 6px !important;
+  gap: 6px 8px !important;
   border-top: 1px solid var(--border-color) !important;
   padding-top: 10px !important;
   width: 100% !important;
+  min-width: 0 !important;
 }
 body.force-mobile .action-link-separator,
 body.force-mobile #batch-stocks-sep,
