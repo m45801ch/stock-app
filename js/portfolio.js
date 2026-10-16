@@ -1071,6 +1071,7 @@
       const tableHeader = document.createElement('div');
       tableHeader.className = 'stock-table-header view-edit';
       tableHeader.innerHTML = `
+        <div class="col-expand"></div>
         <div class="col-info">股名/股號</div>
         <div class="col-shares">持有股數</div>
         <div class="col-tx-count">交易筆數</div>
@@ -1086,11 +1087,17 @@
         if (dictStock && dictStock.name) displayName = dictStock.name;
 
         const totalShares = txs.reduce((sum, t) => sum + (t.type === 'buy' ? Number(t.shares) : -Number(t.shares)), 0);
+        const isExpanded = editExpandedStocks.has(stock.symbol);
 
+        // 與持股明細相同的兩層結構：.stock-row 包裹 summary + details
         const row = document.createElement('div');
-        row.className = 'stock-row-summary view-edit';
-        row.dataset.symbol = stock.symbol;
-        row.innerHTML = `
+        row.className = `stock-row ${isExpanded ? 'is-expanded' : ''}`;
+
+        const summaryRow = document.createElement('div');
+        summaryRow.className = 'stock-row-summary view-edit';
+        summaryRow.dataset.symbol = stock.symbol;
+        summaryRow.innerHTML = `
+          <div class="col-expand"><span class="expand-icon">${isExpanded ? '▼' : '▶'}</span></div>
           <div class="col-info">
             <div class="stock-name">${displayName}</div>
             <div class="stock-symbol">${stock.symbol}</div>
@@ -1098,8 +1105,7 @@
           <div class="col-shares">${totalShares > 0 ? window.StockUtils.formatNumber(totalShares, 0) + ' 股' : '-'}</div>
           <div class="col-tx-count">${txs.length} 筆</div>
           <div class="col-actions">
-            <button class="add-tx-btn" data-symbol="${stock.symbol}" data-name="${displayName}">新增交易</button>
-            <button class="edit-tx-btn">${editExpandedStocks.has(stock.symbol) ? '收合明細' : '交易明細'}</button>
+            <button class="add-tx-btn">新增交易</button>
             <button class="delete-stock-btn" title="從自選股移除">✕</button>
           </div>
         `;
@@ -1109,38 +1115,46 @@
           details.className = 'stock-details';
           details.style.display = 'block';
           details.innerHTML = buildEditTxTable(txs);
-          row.after(details);
+          row.appendChild(details);
           bindEditTxEvents(details, groupId, stock.symbol, displayName);
         };
 
         const removeDetails = () => {
-          const details = row.nextElementSibling;
-          if (details && details.classList.contains('stock-details')) details.remove();
+          row.querySelector(':scope > .stock-details')?.remove();
         };
 
+        const setExpandedVisual = (exp) => {
+          row.classList.toggle('is-expanded', exp);
+          const icon = summaryRow.querySelector('.expand-icon');
+          if (icon) icon.textContent = exp ? '▼' : '▶';
+        };
+
+        const toggleExpand = () => {
+          if (editExpandedStocks.has(stock.symbol)) {
+            editExpandedStocks.delete(stock.symbol);
+            setExpandedVisual(false);
+            removeDetails();
+          } else {
+            editExpandedStocks.add(stock.symbol);
+            setExpandedVisual(true);
+            insertDetails();
+          }
+        };
+
+        // 與持股明細一致：點擊整列即展開/收合交易明細（不開個股詳情、不抓報價）
+        summaryRow.addEventListener('click', (e) => {
+          if (e.target.closest('.add-tx-btn') || e.target.closest('.delete-stock-btn')) return;
+          toggleExpand();
+        });
+
         // 新增交易 → 開 Modal，儲存後經回調只重讀本機
-        row.querySelector('.add-tx-btn').addEventListener('click', (e) => {
+        summaryRow.querySelector('.add-tx-btn').addEventListener('click', (e) => {
           e.stopPropagation();
           window.StockTransaction.openAddTransactionModal(groupId, stock.symbol, displayName, 0);
         });
 
-        // 交易明細 → 展開/收合本機明細（重繪後依 editExpandedStocks 回復）
-        const editBtn = row.querySelector('.edit-tx-btn');
-        editBtn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          if (editExpandedStocks.has(stock.symbol)) {
-            editExpandedStocks.delete(stock.symbol);
-            editBtn.textContent = '交易明細';
-            removeDetails();
-          } else {
-            editExpandedStocks.add(stock.symbol);
-            editBtn.textContent = '收合明細';
-            insertDetails();
-          }
-        });
-
         // 移除個股（含交易）→ 只重讀本機
-        row.querySelector('.delete-stock-btn').addEventListener('click', async (e) => {
+        summaryRow.querySelector('.delete-stock-btn').addEventListener('click', async (e) => {
           e.stopPropagation();
           if (confirm(`確定要將 ${displayName} (${stock.symbol}) 自此群組移除嗎？這將會同步清除此股在該群組的交易紀錄！`)) {
             editExpandedStocks.delete(stock.symbol);
@@ -1149,12 +1163,11 @@
           }
         });
 
-        container.appendChild(row);
+        row.appendChild(summaryRow);
+        if (isExpanded) insertDetails();
 
-        // 重繪後回復先前展開的明細
-        if (editExpandedStocks.has(stock.symbol)) {
-          insertDetails();
-        }      });
+        container.appendChild(row);
+      });
     } catch (err) {
       console.error(err);
       container.innerHTML = `<div class="error-state">載入失敗: ${err.message}</div>`;

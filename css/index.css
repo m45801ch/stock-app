@@ -627,14 +627,13 @@ body {
   grid-template-columns: 40px 2fr 1fr 1fr 1.1fr 1fr 1fr 1fr 1fr 1fr 1fr 1.1fr 1.1fr 50px;
 }
 
-/* 編輯持股模式：股名 | 持有股數 | 交易筆數 | 操作 */
+/* 編輯持股模式：展開箭頭 | 股名 | 持有股數 | 交易筆數 | 操作 */
 .stock-table-header.view-edit {
-  grid-template-columns: 2.2fr 1.2fr 1fr 220px;
+  grid-template-columns: 40px 2.2fr 1.2fr 1fr 200px;
 }
 
 .stock-row-summary.view-edit {
-  grid-template-columns: 2.2fr 1.2fr 1fr 220px;
-  cursor: default;
+  grid-template-columns: 40px 2.2fr 1.2fr 1fr 200px;
 }
 
 .stock-row-summary.view-edit .col-actions {
@@ -646,23 +645,6 @@ body {
 
 .stock-row-summary.view-edit .delete-stock-btn {
   display: flex;
-}
-
-.stock-row-summary.view-edit .edit-tx-btn {
-  background: none;
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
-  padding: 4px 10px;
-  font-size: 12px;
-  color: var(--primary-color);
-  cursor: pointer;
-  white-space: nowrap;
-  transition: all 0.2s;
-}
-
-.stock-row-summary.view-edit .edit-tx-btn:hover {
-  background: var(--primary-color);
-  color: #fff;
 }
 
 .col-batch-check {
@@ -2706,48 +2688,58 @@ body.force-mobile .stock-row-summary:not(.batch-mode-active) .col-batch-check {
 }
 
 /* 編輯持股模式：手機/強制手機版排版（覆蓋上方 grid-area 強制規則） */
+.stock-table-header.view-edit,
 body.force-mobile .stock-table-header.view-edit,
-.stock-table-header.view-edit {
+body.force-desktop .stock-table-header.view-edit {
+  display: grid !important;
+  grid-template-columns: 40px 2.2fr 1.2fr 1fr 200px !important;
+}
+
+.stock-row-summary.view-edit,
+body.force-mobile .stock-row-summary.view-edit,
+body.force-desktop .stock-row-summary.view-edit {
+  grid-template-columns: 40px 2.2fr 1.2fr 1fr 200px !important;
+  grid-template-areas: none !important;
+  gap: 0 !important;
   display: grid !important;
 }
 
-body.force-mobile .stock-row-summary.view-edit,
-.stock-row-summary.view-edit {
-  grid-template-columns: 2.2fr 1.2fr 1fr 220px !important;
-  grid-template-areas: none !important;
-  gap: 0 !important;
-}
-
+.stock-row-summary.view-edit > div,
 body.force-mobile .stock-row-summary.view-edit > div,
-.stock-row-summary.view-edit > div {
+body.force-desktop .stock-row-summary.view-edit > div {
   grid-area: auto !important;
   display: block !important;
 }
 
+.stock-row-summary.view-edit .col-actions,
 body.force-mobile .stock-row-summary.view-edit .col-actions,
-.stock-row-summary.view-edit .col-actions {
+body.force-desktop .stock-row-summary.view-edit .col-actions {
   display: flex !important;
   align-items: center;
   justify-content: flex-end;
   gap: 6px;
 }
 
+.stock-row-summary.view-edit .delete-stock-btn,
 body.force-mobile .stock-row-summary.view-edit .delete-stock-btn,
-.stock-row-summary.view-edit .delete-stock-btn {
+body.force-desktop .stock-row-summary.view-edit .delete-stock-btn {
   display: flex !important;
 }
 
-/* 手機窄螢幕：操作欄改兩段式，避免按鈕擠出 */
+/* 手機窄螢幕：編輯模式網格壓縮，操作欄收窄 */
 @media (max-width: 768px) {
-  .stock-table-header.view-edit {
-    grid-template-columns: 1.6fr 1fr 0.8fr 170px !important;
-    min-width: 640px !important;
+  .stock-table-header.view-edit,
+  body.force-mobile .stock-table-header.view-edit,
+  body.force-desktop .stock-table-header.view-edit {
+    grid-template-columns: 40px 1.6fr 1fr 0.8fr 160px !important;
+    min-width: 600px !important;
   }
-  .stock-row-summary.view-edit {
-    grid-template-columns: 1.6fr 1fr 0.8fr 170px !important;
-    min-width: 640px !important;
+  .stock-row-summary.view-edit,
+  body.force-mobile .stock-row-summary.view-edit,
+  body.force-desktop .stock-row-summary.view-edit {
+    grid-template-columns: 40px 1.6fr 1fr 0.8fr 160px !important;
+    min-width: 600px !important;
   }
-  .stock-row-summary.view-edit .edit-tx-btn,
   .stock-row-summary.view-edit .add-tx-btn {
     font-size: 11px !important;
     padding: 3px 8px !important;
