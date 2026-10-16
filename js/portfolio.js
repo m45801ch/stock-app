@@ -1,8 +1,10 @@
 (function(window) {
   let expandedStocks = new Set();
   let expandedParentTxs = new Set(); // 記錄第二層折疊：哪些已平倉買入交易的「賣出子列」是展開狀態
+  let renderPortfolioSeq = 0; // 渲染世代計數：背景配息回來時若世代已過期就丟棄，避免覆蓋使用者切換後的新畫面
 
   async function renderPortfolio(groupId, force = false) {
+    const mySeq = ++renderPortfolioSeq;
     if (!window.txDateSortOrder) {
       window.txDateSortOrder = 'desc'; // 預設最近新增的排最前面
     }
@@ -48,12 +50,17 @@
       // 讀取 localStorage 儲存的稅費模式狀態 (預設為 include 扣除稅費)
       const includeExpenses = localStorage.getItem('expense_mode') !== 'exclude';
 
-      // ── 並行取得所有股票的交易紀錄 + 字典名稱 + 歷年配息 ──
-      const [allTxsList, allDictStocks, allDividends] = await Promise.all([
+      // ── 並行取得所有股票的交易紀錄 + 字典名稱 ──
+      // 優化：配息改為延遲載入（見下方第二階段），此處只用同步快取秒算損益，
+      // 讓首屏在報價回來後立刻渲染，不再被每檔 4 次 Yahoo 配息查詢擋住
+      const [allTxsList, allDictStocks] = await Promise.all([
         Promise.all(stocks.map(s => window.StockDB.getTransactionsByStock(groupId, s.symbol))),
-        Promise.all(stocks.map(s => window.StockDB.getStockFromDictionary(s.symbol))),
-        Promise.all(stocks.map(s => window.StockAPI.getStockDividendsWithCache(s.symbol)))
+        Promise.all(stocks.map(s => window.StockDB.getStockFromDictionary(s.symbol)))
       ]);
+      const getDivs = window.StockAPI.getCachedDividendsSync
+        ? (sym) => window.StockAPI.getCachedDividendsSync(sym)
+        : () => [];
+      const allDividends = stocks.map(s => getDivs(s.symbol));
 
       for (let i = 0; i < stocks.length; i++) {
         const stock = stocks[i];
@@ -754,9 +761,102 @@
         enableStockDragDrop(container);
       }
 
+      // ── 第二階段（背景）：抓最新配息，補算損益後原地更新數字 ──
+      // 首屏已用快取配息秒渲染；這裡不重建 DOM，只更新總覽與每列損益，
+      // 使用者展開的交易明細、勾選、捲動位置都不會被打斷
+      refreshDividendsInBackground({
+        mySeq, groupId, stocks, allTxsList, quotes,
+        includeDividends, includeExpenses,
+        summaryRealized, summaryUnrealized, summaryValuation,
+        totalMarketValue, totalCostValue, totalRealizedPnL, totalUnrealizedPnL
+      }).catch(e => console.warn('[Dividend BG] 背景更新失敗:', e.message));
+
     } catch (err) {
       console.error(err);
       container.innerHTML = `<div class="error-state">載入失敗: ${err.message}</div>`;
+    }
+  }
+
+  // 背景抓最新配息→重算→原地 patch 損益數字（不重建 DOM、不打斷展開/勾選/捲動）
+  async function refreshDividendsInBackground(ctx) {
+    const { mySeq, groupId, stocks, allTxsList, quotes, includeDividends, includeExpenses } = ctx;
+    if (!stocks || stocks.length === 0) return;
+
+    // 4 檔一批，避免同時打爆免費 Proxy
+    const freshDividends = new Array(stocks.length);
+    for (let i = 0; i < stocks.length; i += 4) {
+      if (mySeq !== renderPortfolioSeq) return; // 世代過期（使用者已切群組/重整），丟棄
+      const chunk = stocks.slice(i, i + 4);
+      const results = await Promise.all(chunk.map(s =>
+        window.StockAPI.getStockDividendsWithCache(s.symbol).catch(() => [])
+      ));
+      results.forEach((divs, j) => { freshDividends[i + j] = divs || []; });
+    }
+    if (mySeq !== renderPortfolioSeq) return;
+    // 群組已切換就丟棄
+    const container = document.getElementById('portfolio-container');
+    if (!container) return;
+
+    let totalRealizedPnL = 0;
+    let totalUnrealizedPnL = 0;
+    let totalCostValue = 0;
+    const perStock = [];
+
+    for (let i = 0; i < stocks.length; i++) {
+      const stock = stocks[i];
+      const txs = allTxsList[i];
+      const dividends = freshDividends[i] || [];
+      let lookupKey = stock.symbol.toUpperCase();
+      if (!lookupKey.includes('.')) lookupKey = `${lookupKey}.TW`;
+      const quote = quotes[lookupKey];
+      const price = quote && quote.price > 0 ? quote.price : 0;
+      const calc = price > 0
+        ? window.StockUtils.calculatePortfolio(txs, price, dividends, includeDividends, includeExpenses)
+        : window.StockUtils.calculatePortfolio(txs, 0, dividends, includeDividends, includeExpenses);
+      perStock.push({ stock, calc });
+      totalCostValue += (calc.totalShares * calc.averageCost);
+      totalRealizedPnL += calc.realizedPnL;
+      totalUnrealizedPnL += calc.unrealizedPnL;
+    }
+    if (mySeq !== renderPortfolioSeq) return;
+
+    // 原地更新每列的損益欄（holdings 明細視圖才有這些欄；summary 視圖只有報價，不需更新）
+    perStock.forEach(({ stock, calc }) => {
+      const row = container.querySelector(`.stock-row[data-symbol="${CSS.escape(stock.symbol)}"]`);
+      if (!row) return;
+      const realizedEl = row.querySelector('.col-realized');
+      if (realizedEl) {
+        const rc = calc.realizedPnL > 0 ? 'stock-up' : (calc.realizedPnL < 0 ? 'stock-down' : 'stock-flat');
+        realizedEl.className = `col-realized ${rc}`;
+        realizedEl.textContent = calc.realizedPnL !== 0
+          ? `${calc.realizedPnL > 0 ? '+' : ''}${window.StockUtils.formatNumber(calc.realizedPnL, 2)}`
+          : '-';
+      }
+      const unrealEl = row.querySelector('.col-unrealized');
+      if (unrealEl) {
+        const pc = calc.unrealizedPnL > 0 ? 'stock-up' : (calc.unrealizedPnL < 0 ? 'stock-down' : 'stock-flat');
+        const pp = calc.unrealizedPnL > 0 ? '▲' : (calc.unrealizedPnL < 0 ? '▼' : '');
+        unrealEl.className = `col-unrealized ${pc}`;
+        const valEl = unrealEl.querySelector('.pnl-val');
+        const pctEl = unrealEl.querySelector('.pnl-pct');
+        if (valEl) valEl.textContent = calc.totalShares > 0 ? `${pp}${window.StockUtils.formatNumber(Math.abs(calc.unrealizedPnL), 2)}` : '-';
+        if (pctEl) pctEl.textContent = calc.totalShares > 0 ? `(${window.StockUtils.formatPercent(calc.unrealizedPnLPercent)})` : '';
+      }
+    });
+
+    // 更新頂部總覽的損益（市值/今日漲跌不受配息影響，不動）
+    if (ctx.summaryUnrealized) {
+      const pct = totalCostValue > 0 ? (totalUnrealizedPnL / totalCostValue) * 100 : 0;
+      const prefix = totalUnrealizedPnL > 0 ? '▲' : (totalUnrealizedPnL < 0 ? '▼' : '');
+      const cc = totalUnrealizedPnL > 0 ? 'stock-up' : (totalUnrealizedPnL < 0 ? 'stock-down' : 'stock-flat');
+      ctx.summaryUnrealized.className = `summary-value ${cc}`;
+      ctx.summaryUnrealized.innerHTML = `${prefix} ${window.StockUtils.formatNumber(Math.abs(totalUnrealizedPnL), 2)} (${window.StockUtils.formatPercent(pct)})`;
+    }
+    if (ctx.summaryRealized) {
+      const prefix = totalRealizedPnL > 0 ? '▲' : (totalRealizedPnL < 0 ? '▼' : '');
+      const cc = totalRealizedPnL > 0 ? 'stock-up' : (totalRealizedPnL < 0 ? 'stock-down' : 'stock-flat');
+      ctx.summaryRealized.className = `summary-value ${cc}`;
+      ctx.summaryRealized.innerHTML = `${prefix} ${window.StockUtils.formatNumber(Math.abs(totalRealizedPnL), 2)}`;
     }
   }
 
@@ -931,9 +1031,377 @@
     });
   }
 
+  // ============================================================
+  // 編輯持股模式：只讀本機 IndexedDB（持股 + 交易 + 字典名稱），
+  // 完全不抓報價、不抓配息、不算市值損益 —— 新增/編輯/刪除後秒重繪
+  // ============================================================
+  let editModeSeq = 0;
+  const editExpandedStocks = new Set(); // 記住編輯模式下展開的股票，重繪後自動回復展開
+
+  async function renderEditMode(groupId) {
+    const mySeq = ++editModeSeq;
+    const container = document.getElementById('portfolio-container');
+    if (!container) return;
+
+    container.innerHTML = '<div class="loading-state">讀取本機持股資料中...</div>';
+
+    try {
+      const stocks = await window.StockDB.getStocksByGroup(groupId);
+      if (mySeq !== editModeSeq) return;
+
+      if (stocks.length === 0) {
+        editExpandedStocks.clear();
+        container.innerHTML = `
+          <div class="empty-state">
+            <p>此群組目前沒有股票</p>
+            <p class="sub-text">請在上方搜尋列搜尋個股並點擊「加入」</p>
+          </div>
+        `;
+        return;
+      }
+
+      const [allTxsList, allDictStocks] = await Promise.all([
+        Promise.all(stocks.map(s => window.StockDB.getTransactionsByStock(groupId, s.symbol))),
+        Promise.all(stocks.map(s => window.StockDB.getStockFromDictionary(s.symbol)))
+      ]);
+      if (mySeq !== editModeSeq) return;
+
+      container.innerHTML = '';
+
+      const tableHeader = document.createElement('div');
+      tableHeader.className = 'stock-table-header view-edit';
+      tableHeader.innerHTML = `
+        <div class="col-info">股名/股號</div>
+        <div class="col-shares">持有股數</div>
+        <div class="col-tx-count">交易筆數</div>
+        <div class="col-actions">操作</div>
+      `;
+      container.appendChild(tableHeader);
+
+      stocks.forEach((stock, i) => {
+        const txs = allTxsList[i] || [];
+        const dictStock = allDictStocks[i];
+
+        let displayName = stock.name || stock.symbol;
+        if (dictStock && dictStock.name) displayName = dictStock.name;
+
+        const totalShares = txs.reduce((sum, t) => sum + (t.type === 'buy' ? Number(t.shares) : -Number(t.shares)), 0);
+
+        const row = document.createElement('div');
+        row.className = 'stock-row-summary view-edit';
+        row.dataset.symbol = stock.symbol;
+        row.innerHTML = `
+          <div class="col-info">
+            <div class="stock-name">${displayName}</div>
+            <div class="stock-symbol">${stock.symbol}</div>
+          </div>
+          <div class="col-shares">${totalShares > 0 ? window.StockUtils.formatNumber(totalShares, 0) + ' 股' : '-'}</div>
+          <div class="col-tx-count">${txs.length} 筆</div>
+          <div class="col-actions">
+            <button class="add-tx-btn" data-symbol="${stock.symbol}" data-name="${displayName}">新增交易</button>
+            <button class="edit-tx-btn">${editExpandedStocks.has(stock.symbol) ? '收合明細' : '交易明細'}</button>
+            <button class="delete-stock-btn" title="從自選股移除">✕</button>
+          </div>
+        `;
+
+        const insertDetails = () => {
+          const details = document.createElement('div');
+          details.className = 'stock-details';
+          details.style.display = 'block';
+          details.innerHTML = buildEditTxTable(txs);
+          row.after(details);
+          bindEditTxEvents(details, groupId, stock.symbol, displayName);
+        };
+
+        const removeDetails = () => {
+          const details = row.nextElementSibling;
+          if (details && details.classList.contains('stock-details')) details.remove();
+        };
+
+        // 新增交易 → 開 Modal，儲存後經回調只重讀本機
+        row.querySelector('.add-tx-btn').addEventListener('click', (e) => {
+          e.stopPropagation();
+          window.StockTransaction.openAddTransactionModal(groupId, stock.symbol, displayName, 0);
+        });
+
+        // 交易明細 → 展開/收合本機明細（重繪後依 editExpandedStocks 回復）
+        const editBtn = row.querySelector('.edit-tx-btn');
+        editBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (editExpandedStocks.has(stock.symbol)) {
+            editExpandedStocks.delete(stock.symbol);
+            editBtn.textContent = '交易明細';
+            removeDetails();
+          } else {
+            editExpandedStocks.add(stock.symbol);
+            editBtn.textContent = '收合明細';
+            insertDetails();
+          }
+        });
+
+        // 移除個股（含交易）→ 只重讀本機
+        row.querySelector('.delete-stock-btn').addEventListener('click', async (e) => {
+          e.stopPropagation();
+          if (confirm(`確定要將 ${displayName} (${stock.symbol}) 自此群組移除嗎？這將會同步清除此股在該群組的交易紀錄！`)) {
+            editExpandedStocks.delete(stock.symbol);
+            await window.StockDB.deleteStockFromGroup(groupId, stock.symbol);
+            renderEditMode(groupId);
+          }
+        });
+
+        container.appendChild(row);
+
+        // 重繪後回復先前展開的明細
+        if (editExpandedStocks.has(stock.symbol)) {
+          insertDetails();
+        }      });
+    } catch (err) {
+      console.error(err);
+      container.innerHTML = `<div class="error-state">載入失敗: ${err.message}</div>`;
+    }
+  }
+
+  // 產生編輯模式的交易表格 HTML（無「目前市值」欄，不依賴報價）
+  function buildEditTxTable(txs) {
+    if (!txs || txs.length === 0) {
+      return `
+        <div class="details-inner">
+          <div class="no-tx-state">無交易明細，請點擊「新增交易」新增買賣紀錄</div>
+        </div>
+      `;
+    }
+    const parentTxs = txs.filter(t => !t.parentId);
+    const childTxsMap = new Map();
+    txs.forEach(t => {
+      if (t.parentId) {
+        if (!childTxsMap.has(t.parentId)) childTxsMap.set(t.parentId, []);
+        childTxsMap.get(t.parentId).push(t);
+      }
+    });
+
+    const txSortOrder = window.txDateSortOrder || 'desc';
+    parentTxs.sort((a, b) => {
+      const dateA = new Date(a.date);
+      const dateB = new Date(b.date);
+      if (dateA - dateB === 0) {
+        return txSortOrder === 'asc' ? a.id - b.id : b.id - a.id;
+      }
+      return txSortOrder === 'asc' ? dateA - dateB : dateB - dateA;
+    });
+
+    let txRowsHTML = '';
+    parentTxs.forEach(parentTx => {
+      const hasChild = childTxsMap.has(parentTx.id);
+      const children = childTxsMap.get(parentTx.id) || [];
+      const isBuy = parentTx.type === 'buy';
+      const parentVal = parentTx.shares * parentTx.price;
+
+      let typeCellHTML = '';
+      if (hasChild) {
+        typeCellHTML = `
+          <div style="display:flex; align-items:center; gap:4px;">
+            <span style="cursor:default; color:var(--text-sub); font-weight:700; margin-right:4px;">└</span>
+            <select class="inline-edit-select inline-type" data-id="${parentTx.id}" data-date="${parentTx.date}" data-shares="${parentTx.shares}" disabled>
+              <option value="buy" ${isBuy ? 'selected' : ''}>買入</option>
+              <option value="sell" ${!isBuy ? 'selected' : ''}>賣出</option>
+            </select>
+          </div>
+        `;
+      } else {
+        typeCellHTML = `
+          <select class="inline-edit-select inline-type" data-id="${parentTx.id}" data-date="${parentTx.date}" data-shares="${parentTx.shares}">
+            <option value="buy" ${isBuy ? 'selected' : ''}>買入</option>
+            <option value="sell" ${!isBuy ? 'selected' : ''}>賣出</option>
+          </select>
+        `;
+      }
+
+      txRowsHTML += `
+        <tr class="tx-parent-row" data-id="${parentTx.id}">
+          <td class="tx-check-cell">
+            <input type="checkbox" class="tx-checkbox" data-id="${parentTx.id}">
+          </td>
+          <td>
+            <input type="date" class="inline-edit-input inline-date" data-id="${parentTx.id}" value="${parentTx.date}" ${hasChild ? 'disabled' : ''}>
+          </td>
+          <td>${typeCellHTML}</td>
+          <td>
+            <div style="display:flex; align-items:center; gap:4px;">
+              <input type="number" class="inline-edit-input inline-shares" data-id="${parentTx.id}" value="${parentTx.shares}" min="1" step="1" style="width: 75px;" ${hasChild ? 'disabled' : ''}>
+              <span style="color:var(--text-sub);">股</span>
+            </div>
+          </td>
+          <td>
+            <div style="display:flex; align-items:center; gap:4px;">
+              <input type="number" class="inline-edit-input inline-price" data-id="${parentTx.id}" value="${parentTx.price}" min="0.01" step="0.01" style="width: 85px;" ${hasChild ? 'disabled' : ''}>
+              <span style="color:var(--text-sub);">TWD</span>
+            </div>
+          </td>
+          <td>${window.StockUtils.formatNumber(parentVal, 2)}</td>
+          <td>
+            <button class="delete-tx-btn" data-id="${parentTx.id}">刪除</button>
+          </td>
+        </tr>
+      `;
+
+      children.forEach(childTx => {
+        const childVal = childTx.shares * childTx.price;
+        txRowsHTML += `
+          <tr class="tx-child-row" data-id="${childTx.id}" data-parent-id="${parentTx.id}">
+            <td></td>
+            <td>
+              <input type="date" class="inline-edit-input inline-date" data-id="${childTx.id}" value="${childTx.date}">
+            </td>
+            <td>
+              <div style="display:flex; align-items:center; gap:4px; padding-left: 8px;">
+                <span style="color:#adb5bd; font-family: monospace; font-weight: bold; margin-right: 4px;">└─</span>
+                <span class="tx-status-sell" style="font-weight:700; color:var(--stock-down-color);">賣出</span>
+              </div>
+            </td>
+            <td>
+              <div style="display:flex; align-items:center; gap:4px;">
+                <input type="number" class="inline-edit-input inline-shares" data-id="${childTx.id}" value="${childTx.shares}" min="1" step="1" style="width: 75px;">
+                <span style="color:var(--text-sub);">股</span>
+              </div>
+            </td>
+            <td>
+              <div style="display:flex; align-items:center; gap:4px;">
+                <input type="number" class="inline-edit-input inline-price" data-id="${childTx.id}" value="${childTx.price}" min="0.01" step="0.01" style="width: 85px;">
+                <span style="color:var(--text-sub);">TWD</span>
+              </div>
+            </td>
+            <td>${window.StockUtils.formatNumber(childVal, 2)}</td>
+            <td>
+              <button class="delete-tx-btn" data-id="${childTx.id}" title="刪除此筆賣出，恢復未賣出狀態">刪除</button>
+            </td>
+          </tr>
+        `;
+      });
+    });
+
+    return `
+      <div class="details-inner">
+        <div class="details-header">
+          <h3>歷史交易明細 <span style="font-size:13px;font-weight:500;color:var(--text-sub);">(${txs.length} 筆)</span></h3>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <div class="batch-toolbar" style="display:none;align-items:center;gap:8px;">
+              <span class="batch-count-label" style="font-size:13px;color:var(--text-sub);">已選 0 筆</span>
+              <button class="batch-delete-btn" style="background:#dc3545;color:#fff;border:none;border-radius:6px;padding:4px 12px;font-size:13px;cursor:pointer;">🗑 刪除選取</button>
+              <button class="batch-cancel-btn btn-secondary" style="padding:4px 10px;font-size:13px;border-radius:6px;">取消</button>
+            </div>
+            <span style="font-size:12px;color:var(--text-sub);">同步至本機資料庫，離開此分頁後自動計算損益</span>
+          </div>
+        </div>
+        <table class="tx-table">
+          <thead>
+            <tr>
+              <th class="tx-check-cell"><input type="checkbox" class="tx-select-all" title="全選"></th>
+              <th>交易日期</th>
+              <th>買入/賣出</th>
+              <th>交易股數</th>
+              <th>交易股價</th>
+              <th>交易金額</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${txRowsHTML}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  // 綁定編輯模式交易表格的行內編輯/刪除事件（儲存後只重讀本機，並保留展開狀態）
+  function bindEditTxEvents(detailsDiv, groupId, symbol, displayName = '') {
+    // 行內編輯：日期/股數/價格 → 自動儲存後只重繪本機
+    detailsDiv.querySelectorAll('.inline-date').forEach(input => {
+      input.addEventListener('change', async (e) => {
+        await window.StockTransaction.handleInlineEdit(e.target.dataset.id, 'date', e.target.value);
+        renderEditMode(groupId);
+      });
+    });
+    detailsDiv.querySelectorAll('.inline-shares').forEach(input => {
+      input.addEventListener('change', async (e) => {
+        const val = Math.max(1, Math.round(Number(e.target.value) || 1));
+        await window.StockTransaction.handleInlineEdit(e.target.dataset.id, 'shares', val);
+        renderEditMode(groupId);
+      });
+    });
+    detailsDiv.querySelectorAll('.inline-price').forEach(input => {
+      input.addEventListener('change', async (e) => {
+        const val = Math.max(0.01, Number(e.target.value) || 0.01);
+        await window.StockTransaction.handleInlineEdit(e.target.dataset.id, 'price', val);
+        renderEditMode(groupId);
+      });
+    });
+    // 買賣類別：買入改賣出時開 Quick Sell Modal
+    detailsDiv.querySelectorAll('.inline-type:not([disabled])').forEach(select => {
+      select.addEventListener('change', async (e) => {
+        const id = Number(e.target.dataset.id);
+        if (e.target.value === 'sell') {
+          e.target.value = 'buy';
+          // 找到該筆交易的日期與股數（從 DOM 讀）
+          const tr = e.target.closest('tr');
+          const date = tr.querySelector('.inline-date')?.value || '';
+          const shares = tr.querySelector('.inline-shares')?.value || '';
+          window.StockTransaction.openQuickSellModal(groupId, symbol, date, shares, displayName || symbol, id);
+        } else {
+          await window.StockTransaction.handleInlineEdit(id, 'type', 'buy');
+          renderEditMode(groupId);
+        }
+      });
+    });
+
+    // 刪除交易
+    detailsDiv.querySelectorAll('.delete-tx-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const id = e.target.dataset.id;
+        const isChild = e.target.closest('tr').classList.contains('tx-child-row');
+        if (isChild) {
+          await window.StockTransaction.handleRestoreTransaction(id);
+        } else {
+          await window.StockTransaction.handleDeleteTransaction(id);
+        }
+        renderEditMode(groupId);
+      });
+    });
+
+    // 批量選擇
+    const toolbar = detailsDiv.querySelector('.batch-toolbar');
+    const batchCountLabel = detailsDiv.querySelector('.batch-count-label');
+    const selectAllChk = detailsDiv.querySelector('.tx-select-all');
+
+    const updateBatchToolbar = () => {
+      const checked = detailsDiv.querySelectorAll('.tx-checkbox:checked');
+      const total = detailsDiv.querySelectorAll('.tx-checkbox');
+      if (toolbar) toolbar.style.display = checked.length > 0 ? 'flex' : 'none';
+      if (batchCountLabel) batchCountLabel.textContent = `已選 ${checked.length} 筆`;
+      if (selectAllChk) selectAllChk.checked = total.length > 0 && checked.length === total.length;
+    };
+
+    selectAllChk?.addEventListener('change', () => {
+      detailsDiv.querySelectorAll('.tx-checkbox').forEach(cb => cb.checked = selectAllChk.checked);
+      updateBatchToolbar();
+    });
+    detailsDiv.querySelectorAll('.tx-checkbox').forEach(cb => cb.addEventListener('change', updateBatchToolbar));
+    detailsDiv.querySelector('.batch-delete-btn')?.addEventListener('click', async () => {
+      const ids = [...detailsDiv.querySelectorAll('.tx-checkbox:checked')].map(cb => Number(cb.dataset.id));
+      await window.StockTransaction.handleBatchDelete(ids);
+      renderEditMode(groupId);
+    });
+    detailsDiv.querySelector('.batch-cancel-btn')?.addEventListener('click', () => {
+      detailsDiv.querySelectorAll('.tx-checkbox').forEach(cb => cb.checked = false);
+      if (selectAllChk) selectAllChk.checked = false;
+      updateBatchToolbar();
+    });
+  }
+
   window.StockPortfolio = {
     renderPortfolio,
     toggleBatchMode,
-    renderHistory
+    renderHistory,
+    renderEditMode
   };
 })(window);

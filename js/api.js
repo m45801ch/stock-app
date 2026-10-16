@@ -82,6 +82,20 @@
   ];
 
   let _lastWorkingProxyIdx = 0;
+  // 優化：記住上次可用的 Proxy，下次啟動優先使用，省去逐個試錯的時間
+  try {
+    const savedIdx = parseInt(localStorage.getItem('stock_api_proxy_idx') || '', 10);
+    if (!isNaN(savedIdx) && savedIdx >= 0 && savedIdx < PROXIES.length) {
+      _lastWorkingProxyIdx = savedIdx;
+    }
+  } catch (e) {}
+
+  function rememberWorkingProxy(proxy) {
+    _lastWorkingProxyIdx = PROXIES.indexOf(proxy);
+    try {
+      localStorage.setItem('stock_api_proxy_idx', String(_lastWorkingProxyIdx));
+    } catch (e) {}
+  }
 
   async function fetchWithTimeout(url, timeout = 12000) {
     const controller = new AbortController();
@@ -97,6 +111,7 @@
   }
 
   // 並行嘗試多個 Proxy，取最快成功者
+  // 優化：先單獨試上次可用的 Proxy（最常見命中），失敗才並行試其餘，避免每次都等最慢的那個
   async function fetchWithProxyFallback(targetUrl, validateFn = null) {
     const orderedProxies = [
       ...PROXIES.slice(_lastWorkingProxyIdx),
@@ -105,7 +120,7 @@
 
     const tryProxy = async (proxy) => {
       const url = proxy ? `${proxy}${encodeURIComponent(targetUrl)}` : targetUrl;
-      const response = await fetchWithTimeout(url, 12000);
+      const response = await fetchWithTimeout(url, 10000);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const text = await response.text();
       let parsed;
@@ -126,13 +141,22 @@
       if (validateFn && !validateFn(parsed)) {
         throw new Error('回傳資料格式不符合預期');
       }
-      _lastWorkingProxyIdx = PROXIES.indexOf(proxy);
+      rememberWorkingProxy(proxy);
       return parsed;
     };
 
-    // 分批並行嘗試 (每次 2 個)
-    for (let i = 0; i < orderedProxies.length; i += 2) {
-      const batch = orderedProxies.slice(i, i + 2).map(p => tryProxy(p).catch(err => {
+    // 快捷路徑：先只試記住的 Proxy，命中則直接回傳（省一半流量與等待）
+    const [fastPath, ...rest] = orderedProxies;
+    try {
+      return await tryProxy(fastPath);
+    } catch (err) {
+      console.warn(`[Proxy] 快捷失敗: ${fastPath}`, err.message);
+      if (rest.length === 0) throw new Error('所有代理連線失敗');
+    }
+
+    // 慢速路徑：其餘 Proxy 兩兩並行嘗試
+    for (let i = 0; i < rest.length; i += 2) {
+      const batch = rest.slice(i, i + 2).map(p => tryProxy(p).catch(err => {
         console.warn(`[Proxy] 失敗: ${p}`, err.message);
         return null;
       }));
@@ -143,35 +167,61 @@
     throw new Error('所有代理連線失敗');
   }
 
-  async function fetchTWSEQuotes(normalizedSymbols) {
-    const exChParts = normalizedSymbols.map(sym => {
+  // 優化：TWSE 一次塞太多代號時 URL 過長且任一代號異常會拖累整批；
+  // 改為每批最多 10 檔並行查詢，單批失敗只備援該批，不擋其他批
+  const TWSE_BATCH_SIZE = 10;
+  const TWSE_JSONP_TIMEOUT = 5000;
+
+  async function fetchTWSEBatch(batchSymbols) {
+    const exChParts = batchSymbols.map(sym => {
       const code = sym.replace(/\.(TW|TWO)$/i, '');
       const isOTC = sym.toUpperCase().endsWith('.TWO');
       return `${isOTC ? 'otc' : 'tse'}_${code.toLowerCase()}.tw`;
     });
     const exCh = exChParts.join('|');
-
     console.log(`[TWSE] 查詢中... ex_ch=${exCh}`);
 
     // 策略 1：直接 JSONP (最快，不需 Proxy)
     try {
-      const data = await withRetry(() => fetchTWSEViaJSONP(exCh, 8000), 1, 1000);
+      const data = await withRetry(() => fetchTWSEViaJSONP(exCh, TWSE_JSONP_TIMEOUT), 1, 800);
       console.log(`[TWSE] JSONP 直連成功`);
-      return parseTWSEQuoteData(data, normalizedSymbols);
+      return parseTWSEQuoteData(data, batchSymbols);
     } catch (e) {
       console.warn('[TWSE] JSONP 直連失敗，切換至 Proxy:', e.message);
     }
 
-    // 策略 2：透過 CORS Proxy
-    try {
-      const url = `https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=${exCh}&json=1&delay=0&_=${Date.now()}`;
-      const data = await fetchWithProxyFallback(url, (json) => json && Array.isArray(json.msgArray));
-      console.log(`[TWSE] Proxy 查詢成功`);
-      return parseTWSEQuoteData(data, normalizedSymbols);
-    } catch (e) {
-      console.warn('[TWSE] 全部方式失敗:', e.message);
-      throw e;
+    // 策略 2：透過 CORS Proxy（只備援這一小批）
+    const url = `https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=${exCh}&json=1&delay=0&_=${Date.now()}`;
+    const data = await fetchWithProxyFallback(url, (json) => json && Array.isArray(json.msgArray));
+    console.log(`[TWSE] Proxy 查詢成功`);
+    return parseTWSEQuoteData(data, batchSymbols);
+  }
+
+  async function fetchTWSEQuotes(normalizedSymbols) {
+    if (!normalizedSymbols || normalizedSymbols.length === 0) return {};
+    if (normalizedSymbols.length <= TWSE_BATCH_SIZE) {
+      try {
+        return await fetchTWSEBatch(normalizedSymbols);
+      } catch (e) {
+        console.warn('[TWSE] 全部方式失敗:', e.message);
+        throw e;
+      }
     }
+    // 分批並行，各批獨立備援，單批失敗不拖累其他批
+    const batches = [];
+    for (let i = 0; i < normalizedSymbols.length; i += TWSE_BATCH_SIZE) {
+      batches.push(normalizedSymbols.slice(i, i + TWSE_BATCH_SIZE));
+    }
+    const settled = await Promise.all(batches.map(batch =>
+      fetchTWSEBatch(batch).catch(err => {
+        console.warn('[TWSE] 某批次查詢失敗:', err.message);
+        return {};
+      })
+    ));
+    const merged = {};
+    settled.forEach(part => Object.assign(merged, part));
+    if (Object.keys(merged).length === 0) throw new Error('TWSE 全部批次查詢失敗');
+    return merged;
   }
 
   function parseTWSEQuoteData(data, normalizedSymbols) {
@@ -261,11 +311,11 @@
     return fetchWithProxyFallback(url, (data) => data && data.symbol);
   }
 
-  async function fetchFugleQuotes(symbols) {
+  async function fetchFugleQuotes(symbols, concurrency = 5) {
     const results = {};
     if (!symbols || symbols.length === 0) return results;
 
-    const fetchPromises = symbols.map(async (sym) => {
+    const fetchOne = async (sym) => {
       const code = sym.replace(/\.(TW|TWO)$/i, '');
       let data = null;
 
@@ -314,9 +364,13 @@
         ask: bestAsk > 0 ? Number(bestAsk.toFixed(2)) : '-',
         source: 'Fugle'
       };
-    });
+    };
 
-    await Promise.all(fetchPromises);
+    // 優化：限制並發數，避免幾十檔同時打免費 Proxy 被 rate-limit 反而全慢
+    for (let i = 0; i < symbols.length; i += concurrency) {
+      const chunk = symbols.slice(i, i + concurrency);
+      await Promise.all(chunk.map(fetchOne));
+    }
     return results;
   }
 
@@ -477,7 +531,8 @@
       const yahooSymbols = symbolsToFetch.filter(sym => !results[sym] || results[sym].price <= 0);
 
       if (yahooSymbols.length > 0) {
-        const fetchPromises = yahooSymbols.map(async (sym) => {
+        // 優化：一次只並行 4 檔 Yahoo，避免免費 Proxy 被打爆反而全超時
+        const fetchOneYahoo = async (sym) => {
           const yahooSym = SYMBOL_MAPPING[sym] || sym;
           const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${yahooSym}?interval=1d&range=2d&_=${Date.now()}`;
           try {
@@ -531,9 +586,11 @@
           } catch (err) {
             console.warn(`[Yahoo] 查詢 ${sym} (${yahooSym}) 失敗:`, err.message);
           }
-        });
+        };
 
-        await Promise.all(fetchPromises);
+        for (let i = 0; i < yahooSymbols.length; i += 4) {
+          await Promise.all(yahooSymbols.slice(i, i + 4).map(fetchOneYahoo));
+        }
       }
     }
 
@@ -802,6 +859,22 @@
     }
   }
 
+  // 優化：同步讀取配息快取（不打網路），供首屏秒渲染用；背景再用 getStockDividendsWithCache 補新資料
+  function getCachedDividendsSync(symbol) {
+    let sym = (symbol || '').toUpperCase().trim();
+    if (!sym) return [];
+    if (!sym.includes('.')) sym = `${sym}.TW`;
+    if (sym === 'T00.TW' || sym === 'O00.TWO' || sym === 'T13.TW' || sym === 'T17.TW') return [];
+    try {
+      const cached = localStorage.getItem(`cached_dividends_${sym}`);
+      if (!cached) return [];
+      const { data } = JSON.parse(cached);
+      return Array.isArray(data) ? data : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
   window.StockAPI = {
     fetchJSONP,
     fetchTWSEViaJSONP,
@@ -811,6 +884,7 @@
     initializeLocalStockDictionary,
     fetchWithProxyFallback,
     getStockDividendsWithCache,
+    getCachedDividendsSync,
     fetchFugleQuotes
   };
 })(window);

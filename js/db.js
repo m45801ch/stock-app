@@ -1,6 +1,6 @@
 (function(window) {
   const DB_NAME = 'TWStockTrackerDB';
-  const DB_VERSION = 3; // 升級版本以建立新 store
+  const DB_VERSION = 4; // v4：transactions 新增 group_symbol 複合 index，加速單股交易查詢
 
   let dbInstance = null;
 
@@ -33,6 +33,13 @@
           const txStore = db.createObjectStore('transactions', { keyPath: 'id', autoIncrement: true });
           txStore.createIndex('symbol', 'symbol', { unique: false });
           txStore.createIndex('groupId', 'groupId', { unique: false });
+          txStore.createIndex('group_symbol', ['groupId', 'symbol'], { unique: false });
+        } else {
+          // v4 升級：為舊庫補上 group_symbol 複合 index（getTransactionsByStock 改走 index，不再全表掃描）
+          const txStore = request.transaction.objectStore('transactions');
+          if (!txStore.indexNames.contains('group_symbol')) {
+            txStore.createIndex('group_symbol', ['groupId', 'symbol'], { unique: false });
+          }
         }
 
         // 新增台股中文字典 Store
@@ -277,10 +284,21 @@
     });
   }
 
+  // 優化：優先走 group_symbol 複合 index（v4+），舊庫無此 index 時自動退回全表掃描
   function getTransactionsByStock(groupId, symbol) {
     return new Promise(async (resolve, reject) => {
       try {
         const store = await getStore('transactions');
+        if (store.indexNames.contains('group_symbol')) {
+          const request = store.index('group_symbol').getAll([groupId, symbol]);
+          request.onsuccess = () => {
+            const results = (request.result || []).map((v) => ({ id: v.id, ...v }));
+            results.sort((a, b) => new Date(a.date) - new Date(b.date));
+            resolve(results);
+          };
+          request.onerror = () => reject(request.error);
+          return;
+        }
         const request = store.openCursor();
         const results = [];
         request.onsuccess = (e) => {
