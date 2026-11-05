@@ -451,6 +451,11 @@
   }
 
   async function refreshPortfolio(force = false) {
+    // 編輯持股分頁中：只重讀本機（不抓報價/配息），保持編輯秒開秒存
+    if (window.activeSubTab === 'edit' && window.StockPortfolio?.renderEditMode) {
+      await window.StockPortfolio.renderEditMode(activeGroupId);
+      return;
+    }
     await window.StockPortfolio.renderPortfolio(activeGroupId, force);
   }
 
@@ -487,6 +492,7 @@
     const subTabMarket = document.getElementById('sub-tab-market');
     const subTabSummary = document.getElementById('sub-tab-summary');
     const subTabHoldings = document.getElementById('sub-tab-holdings');
+    const subTabEdit = document.getElementById('sub-tab-edit');
     const subTabHistory = document.getElementById('sub-tab-history');
     const btnToggleView = document.getElementById('btn-toggle-view');
 
@@ -501,6 +507,7 @@
       subTabMarket?.classList.toggle('active', tabName === 'market');
       subTabSummary?.classList.toggle('active', tabName === 'summary');
       subTabHoldings?.classList.toggle('active', tabName === 'holdings');
+      subTabEdit?.classList.toggle('active', tabName === 'edit');
       subTabHistory?.classList.toggle('active', tabName === 'history');
 
       // 隱藏所有容器
@@ -518,6 +525,13 @@
         if (window.StockPortfolio && typeof window.StockPortfolio.renderHistory === 'function') {
           window.StockPortfolio.renderHistory();
         }
+      } else if (tabName === 'edit') {
+        // 編輯持股：只讀本機資料，不抓報價/配息，編輯秒開秒存
+        if (portfolioContainer) portfolioContainer.style.display = 'block';
+        if (btnToggleView) btnToggleView.textContent = '前往摘要 →';
+        if (window.StockPortfolio && typeof window.StockPortfolio.renderEditMode === 'function') {
+          window.StockPortfolio.renderEditMode(activeGroupId);
+        }
       } else {
         if (portfolioContainer) portfolioContainer.style.display = 'block';
         if (tabName === 'summary') {
@@ -532,6 +546,7 @@
     subTabMarket?.addEventListener('click', () => switchSubTab('market'));
     subTabSummary?.addEventListener('click', () => switchSubTab('summary'));
     subTabHoldings?.addEventListener('click', () => switchSubTab('holdings'));
+    subTabEdit?.addEventListener('click', () => switchSubTab('edit'));
     subTabHistory?.addEventListener('click', () => switchSubTab('history'));
 
     // 永久清空所有歷史紀錄
