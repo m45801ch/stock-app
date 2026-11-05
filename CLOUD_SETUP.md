@@ -29,7 +29,7 @@ function doPost(e) {
     const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
     
     if (action === 'upload') {
-      // 1. 將完整 JSON 備份資料寫入 "BACKUP_DATA" 工作表 (供 App 下載還原使用)
+      // 1. 完整 JSON 備份 (供 App 下載還原，每次都覆寫)
       let backupSheet = ss.getSheetByName("BACKUP_DATA");
       if (!backupSheet) {
         backupSheet = ss.insertSheet("BACKUP_DATA");
@@ -37,43 +37,57 @@ function doPost(e) {
       backupSheet.clear();
       backupSheet.getRange(1, 1).setValue(JSON.stringify(payload));
       
-      // 2. 自動匯出「群組列表」工作表
+      // ─── 以下為增量更新 ───
+      
+      // 2. 增量更新「群組列表」
       let groupSheet = ss.getSheetByName("群組列表");
       if (!groupSheet) {
         groupSheet = ss.insertSheet("群組列表");
+        groupSheet.appendRow(["群組ID", "群組名稱"]);
       }
-      groupSheet.clear();
-      groupSheet.appendRow(["群組ID", "群組名稱"]);
-      if (payload.groups && payload.groups.length > 0) {
+      const existingGroupIds = {};
+      const groupData = groupSheet.getDataRange().getValues();
+      for (let r = 1; r < groupData.length; r++) {
+        if (groupData[r][0]) existingGroupIds[groupData[r][0]] = true;
+      }
+      if (payload.groups) {
         payload.groups.forEach(function(g) {
-          groupSheet.appendRow([g.id, g.name]);
+          if (!existingGroupIds[g.id]) {
+            groupSheet.appendRow([g.id, g.name]);
+          }
         });
       }
       
-      // 3. 自動匯出「交易明細」工作表 (包含關聯父交易，方便對帳)
+      // 3. 增量更新「交易明細」
       let txSheet = ss.getSheetByName("交易明細");
       if (!txSheet) {
         txSheet = ss.insertSheet("交易明細");
+        txSheet.appendRow(["交易ID", "群組ID", "股票代號", "交易日期", "交易類別", "交易股數", "交易單價", "交易總額", "關聯父交易ID"]);
       }
-      txSheet.clear();
-      txSheet.appendRow(["交易ID", "群組ID", "股票代號", "交易日期", "交易類別", "交易股數", "交易單價", "交易總額", "關聯父交易ID"]);
-      if (payload.transactions && payload.transactions.length > 0) {
+      const existingTxIds = {};
+      const txData = txSheet.getDataRange().getValues();
+      for (let r = 1; r < txData.length; r++) {
+        if (txData[r][0]) existingTxIds[txData[r][0]] = true;
+      }
+      if (payload.transactions) {
         payload.transactions.forEach(function(tx) {
-          txSheet.appendRow([
-            tx.id,
-            tx.groupId,
-            tx.symbol,
-            tx.date,
-            tx.type === 'buy' ? '買入' : '賣出',
-            tx.shares,
-            tx.price,
-            tx.shares * tx.price,
-            tx.parentId || ""
-          ]);
+          if (!existingTxIds[tx.id]) {
+            txSheet.appendRow([
+              tx.id,
+              tx.groupId,
+              tx.symbol,
+              tx.date,
+              tx.type === 'buy' ? '買入' : '賣出',
+              tx.shares,
+              tx.price,
+              tx.shares * tx.price,
+              tx.parentId || ""
+            ]);
+          }
         });
       }
       
-      // 4. 自動匯出「個股持倉總覽」並自動套用 GoogleFinance 報價公式！
+      // 4. 重新產生「個股持倉總覽」(只能重算，無法增量)
       let portfolioSheet = ss.getSheetByName("個股持倉總覽");
       if (!portfolioSheet) {
         portfolioSheet = ss.insertSheet("個股持倉總覽");
@@ -85,7 +99,6 @@ function doPost(e) {
       if (payload.groups) {
         payload.groups.forEach(function(g) { groupsMap[g.id] = g.name; });
       }
-      
       const stockMap = {};
       if (payload.stocks) {
         payload.stocks.forEach(function(s) {
@@ -93,28 +106,27 @@ function doPost(e) {
         });
       }
       
+      // 合併既有交易 + 新交易來計算持倉
+      const allTxs = payload.transactions || [];
+      const sortedTxs = [].concat(allTxs).sort(function(a, b) {
+        return new Date(a.date) - new Date(b.date);
+      });
       const holdings = {};
-      if (payload.transactions) {
-        // 依日期排列
-        const sortedTxs = [].concat(payload.transactions).sort(function(a, b) {
-          return new Date(a.date) - new Date(b.date);
-        });
-        sortedTxs.forEach(function(tx) {
-          const key = tx.groupId + "_" + tx.symbol;
-          if (!holdings[key]) {
-            holdings[key] = { groupId: tx.groupId, symbol: tx.symbol, shares: 0, totalCost: 0 };
-          }
-          if (tx.type === 'buy') {
-            holdings[key].shares += tx.shares;
-            holdings[key].totalCost += (tx.shares * tx.price);
-          } else if (tx.type === 'sell') {
-            const avgCostBefore = holdings[key].shares > 0 ? holdings[key].totalCost / holdings[key].shares : 0;
-            holdings[key].shares -= tx.shares;
-            if (holdings[key].shares < 0) holdings[key].shares = 0;
-            holdings[key].totalCost = holdings[key].shares * avgCostBefore;
-          }
-        });
-      }
+      sortedTxs.forEach(function(tx) {
+        const key = tx.groupId + "_" + tx.symbol;
+        if (!holdings[key]) {
+          holdings[key] = { groupId: tx.groupId, symbol: tx.symbol, shares: 0, totalCost: 0 };
+        }
+        if (tx.type === 'buy') {
+          holdings[key].shares += tx.shares;
+          holdings[key].totalCost += (tx.shares * tx.price);
+        } else if (tx.type === 'sell') {
+          const avgCostBefore = holdings[key].shares > 0 ? holdings[key].totalCost / holdings[key].shares : 0;
+          holdings[key].shares -= tx.shares;
+          if (holdings[key].shares < 0) holdings[key].shares = 0;
+          holdings[key].totalCost = holdings[key].shares * avgCostBefore;
+        }
+      });
       
       let rowIdx = 2;
       Object.keys(holdings).forEach(function(key) {
@@ -123,28 +135,19 @@ function doPost(e) {
           const groupName = groupsMap[item.groupId] || "預設群組";
           const stockName = stockMap[item.groupId + "_" + item.symbol] || item.symbol;
           const avgCost = item.totalCost / item.shares;
-          
-          // 將台股轉換為 GoogleFinance 支援的規格 (例如 2330.TW -> TPE:2330)
           const cleanCode = item.symbol.replace(/\.(TW|TWO)$/i, '');
           const gfSymbol = "TPE:" + cleanCode;
-          
           portfolioSheet.appendRow([
-            groupName,
-            item.symbol,
-            stockName,
-            item.shares,
-            avgCost,
-            item.totalCost,
+            groupName, item.symbol, stockName,
+            item.shares, avgCost, item.totalCost,
             '=GOOGLEFINANCE("' + gfSymbol + '", "price")',
-            '=D' + rowIdx + '*G' + rowIdx, // 持有股數 * 當前市價
-            '=H' + rowIdx + '-F' + rowIdx, // 當前市值 - 持股成本
-            '=IF(F' + rowIdx + '>0, I' + rowIdx + '/F' + rowIdx + ', 0)' // 未實現損益 / 持股成本
+            '=D' + rowIdx + '*G' + rowIdx,
+            '=H' + rowIdx + '-F' + rowIdx,
+            '=IF(F' + rowIdx + '>0, I' + rowIdx + '/F' + rowIdx + ', 0)'
           ]);
           rowIdx++;
         }
       });
-      
-      // 套用試算表格式美化
       if (rowIdx > 2) {
         portfolioSheet.getRange("E2:F" + rowIdx).setNumberFormat("$#,##0.00");
         portfolioSheet.getRange("G2:H" + rowIdx).setNumberFormat("$#,##0.00");

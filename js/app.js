@@ -1481,6 +1481,9 @@
         throw new Error('API 工具尚未載入');
       }
 
+      // 儲存 JSONP 直連的結果，做為 fetchBatchQuotes 失敗時的備份
+      let jsonpResult = null;
+
       // 直接透過 TWSE JSONP 查詢加權指數 (tse_t00.tw)，更穩定快速
       if (typeof window.StockAPI.fetchTWSEViaJSONP === 'function') {
         try {
@@ -1496,14 +1499,16 @@
               const symbol = isUp ? '▲' : (change < 0 ? '▼' : '');
               const priceStr = window.StockUtils.formatNumber(z, 2);
               const changeStr = `${symbol} ${window.StockUtils.formatNumber(Math.abs(change), 2)} (${window.StockUtils.formatPercent(changePct)})`;
+              const now = new Date();
+              const localTimeStr = now.toLocaleTimeString('zh-TW', { hour12: false, hour: '2-digit', minute: '2-digit' });
+
+              jsonpResult = { z, y, change, changePct, isUp, symbol, priceStr, changeStr, localTimeStr };
 
               valEl.textContent = priceStr;
               valEl.className = isUp ? 'stock-up' : (change < 0 ? 'stock-down' : 'stock-flat');
               changeEl.textContent = changeStr;
               changeEl.className = isUp ? 'stock-up' : (change < 0 ? 'stock-down' : 'stock-flat');
 
-              const now = new Date();
-              const localTimeStr = now.toLocaleTimeString('zh-TW', { hour12: false, hour: '2-digit', minute: '2-digit' });
               document.getElementById('broad-market-badge')?.setAttribute('title', `更新時間： ${localTimeStr}`);
               if (badgeTimeEl) badgeTimeEl.textContent = `（${localTimeStr}）`;
 
@@ -1572,6 +1577,7 @@
       // 專門更新大盤 (TSE - 加權指數) 到頂部動作橫列
       const twii = quotes['T00.TW'];
       if (twii && twii.price > 0 && !twii.error) {
+        // 主流程有資料，優先使用主流程
         const change = twii.change;
         const isUp = change > 0;
         const colorClass = isUp ? 'stock-up' : (change < 0 ? 'stock-down' : 'stock-flat');
@@ -1591,6 +1597,20 @@
         }
         if (badgeTimeEl) {
           badgeTimeEl.textContent = `（${localTimeStr}）`;
+        }
+      } else if (jsonpResult) {
+        // 主流程沒資料，回退到 JSONP 直連結果，避免顯示空白
+        valEl.textContent = jsonpResult.priceStr;
+        valEl.className = jsonpResult.isUp ? 'stock-up' : (jsonpResult.change < 0 ? 'stock-down' : 'stock-flat');
+        changeEl.textContent = jsonpResult.changeStr;
+        changeEl.className = jsonpResult.isUp ? 'stock-up' : (jsonpResult.change < 0 ? 'stock-down' : 'stock-flat');
+
+        const badgeContainer = document.getElementById('broad-market-badge');
+        if (badgeContainer) {
+          badgeContainer.title = `更新時間： ${jsonpResult.localTimeStr}`;
+        }
+        if (badgeTimeEl) {
+          badgeTimeEl.textContent = `（${jsonpResult.localTimeStr}）`;
         }
       }
 
