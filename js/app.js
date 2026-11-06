@@ -457,6 +457,8 @@
       return;
     }
     await window.StockPortfolio.renderPortfolio(activeGroupId, force);
+    // 同步更新大盤行情（摘要資料更新時，大盤行情一併更新）
+    await updateBroadMarketBadge(force);
   }
 
   function bindHeaderActions() {
